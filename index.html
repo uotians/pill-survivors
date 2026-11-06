@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pill Survivors</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <canvas id="game"></canvas>
+
+  <!-- ================= HUD ================= -->
+  <div id="hud" class="hidden">
+    <div id="xpBar"><div id="xpFill"></div><span id="lvText">LV 1</span></div>
+    <div class="hud-row">
+      <div class="hud-left">
+        <div class="hp-row">
+          <div class="hp-bar"><div id="hpFill"></div></div>
+          <span id="hpText">100/100</span>
+        </div>
+        <div id="weaponSlots" class="slots"></div>
+        <div id="passiveSlots" class="slots"></div>
+        <div id="effects"></div>
+      </div>
+      <div class="hud-center"><div id="timer">00:00</div><div id="stageName"></div></div>
+      <div class="hud-right">
+        <div class="stat"><span class="label">KILLS</span><span id="kills">0</span></div>
+        <div class="stat gold"><span class="label">GOLD</span><span id="gold">0</span></div>
+      </div>
+    </div>
+  </div>
+  <div id="toasts"></div>
+
+  <!-- ================= Main menu ================= -->
+  <div id="menuScreen" class="overlay">
+    <div class="panel">
+      <h1>PILL<span>SURVIVORS</span></h1>
+      <p class="tagline">Survive the outbreak. Every cure has a <em>side effect</em>.</p>
+      <div class="menu-buttons">
+        <button id="playBtn" class="btn big">PLAY <small>[Enter]</small></button>
+        <button id="shopBtn" class="btn alt">PHARMACY <small>[S]</small></button>
+        <button id="codexBtn" class="btn alt">ENCYCLOPEDIA <small>[E]</small></button>
+        <button id="achBtn" class="btn alt">ACHIEVEMENTS <small>[A]</small></button>
+      </div>
+      <button id="settingsBtn" class="btn ghost small">Settings <small>[O]</small></button>
+      <p class="gold-line">Gold: <b id="menuGold">0</b></p>
+      <p id="menuBest" class="muted"></p>
+      <div class="controls">
+        <div><kbd>WASD</kbd> / <kbd>Arrows</kbd> move — weapons fire automatically</div>
+        <div><kbd>Mouse</kbd> aim (see Settings)</div>
+        <div><kbd>1</kbd>-<kbd>4</kbd> pick upgrade</div>
+        <div><kbd>P</kbd> pause</div>
+        <div><kbd>M</kbd> mute</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= Character select ================= -->
+  <div id="charScreen" class="overlay hidden">
+    <div class="panel wide">
+      <h2>NEW RUN</h2>
+      <p class="gold-line">Gold: <b id="charGold">0</b></p>
+      <h3 class="sel-h">Stage <small>[W/S]</small></h3>
+      <div id="stageList" class="stage-list"></div>
+      <h3 class="sel-h">Medic <small>[A/D]</small></h3>
+      <div id="charList" class="char-list"></div>
+      <div class="menu-buttons">
+        <button id="charBack" class="btn alt">Back [Esc]</button>
+        <button id="charStart" class="btn big">START RUN [Enter]</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= Pharmacy (meta shop) ================= -->
+  <div id="shopScreen" class="overlay hidden">
+    <div class="panel wide">
+      <h2>PHARMACY</h2>
+      <p class="tagline">Permanent upgrades. No side effects. <em>Probably.</em></p>
+      <p class="gold-line">Gold: <b id="shopGold">0</b></p>
+      <div id="shopList" class="shop-list"></div>
+      <div class="menu-buttons">
+        <button id="shopBack" class="btn alt">Back [Esc]</button>
+        <button id="resetBtn" class="btn danger small">Reset progress</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= Achievements ================= -->
+  <div id="achievementsScreen" class="overlay hidden">
+    <div class="panel wide">
+      <h2>ACHIEVEMENTS</h2>
+      <p id="achProgress" class="tagline"></p>
+      <div id="achList" class="ach-list"></div>
+      <div class="menu-buttons">
+        <button id="achBack" class="btn alt">Back [Esc]</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= Settings ================= -->
+  <div id="settingsScreen" class="overlay hidden">
+    <div class="panel">
+      <h2>SETTINGS</h2>
+      <div id="settingsList" class="settings-list"></div>
+      <p class="aim-summary">Aimed weapons fire: <b id="aimSummary"></b></p>
+      <div class="menu-buttons">
+        <button id="settingsBack" class="btn alt">Back [Esc]</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= Encyclopedia ================= -->
+  <div id="codexScreen" class="overlay hidden">
+    <div class="panel wide">
+      <h2>ENCYCLOPEDIA</h2>
+      <p id="codexProgress" class="tagline"></p>
+      <div id="codexTabs" class="tabs"></div>
+      <div class="codex">
+        <div id="codexGrid" class="codex-grid"></div>
+        <div id="codexDetail" class="codex-detail"></div>
+      </div>
+      <div class="menu-buttons">
+        <button id="codexBack" class="btn alt">Back [Esc]</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= Level up ================= -->
+  <div id="levelUpScreen" class="overlay dim hidden">
+    <div class="panel wide">
+      <h2 id="luTitle">LEVEL UP</h2>
+      <p id="luSub" class="tagline"></p>
+      <div id="cardList" class="card-list"></div>
+      <button id="rerollBtn" class="btn alt small">Reroll [R]</button>
+    </div>
+  </div>
+
+  <!-- ================= Pause ================= -->
+  <div id="pauseScreen" class="overlay dim hidden">
+    <div class="panel wide">
+      <h2>PAUSED</h2>
+      <div id="pauseBuild" class="build"></div>
+      <div class="menu-buttons">
+        <button id="resumeBtn" class="btn big">Resume [P]</button>
+        <button id="pauseSettingsBtn" class="btn ghost small">Settings [O]</button>
+        <button id="quitBtn" class="btn danger small">Abandon run</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= Game over / victory ================= -->
+  <div id="gameOverScreen" class="overlay hidden">
+    <div class="panel wide">
+      <h1 id="goTitle" class="dead">OVERDOSE</h1>
+      <p id="goSub" class="tagline"></p>
+      <div class="results">
+        <div><span class="label">SURVIVED</span><span id="goTime">0</span></div>
+        <div><span class="label">LEVEL</span><span id="goLevel">0</span></div>
+        <div><span class="label">KILLS</span><span id="goKills">0</span></div>
+        <div><span class="label">DAMAGE</span><span id="goDmg">0</span></div>
+      </div>
+      <p id="goGold" class="gold-line"></p>
+      <div id="goAch" class="go-ach-list"></div>
+      <div id="goBuild" class="build"></div>
+      <div class="menu-buttons">
+        <button id="retryBtn" class="btn big">Retry [R]</button>
+        <button id="menuBtn" class="btn alt">Menu [Enter]</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/core.js"></script>
+  <script src="js/data.js"></script>
+  <script src="js/world.js"></script>
+  <script src="js/achievements.js"></script>
+  <script src="js/music.js"></script>
+  <script src="js/game.js"></script>
+  <script src="js/render.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/main.js"></script>
+</body>
+</html>
