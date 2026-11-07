@@ -6,7 +6,7 @@
    ========================================================================= */
 
 // Shown on the main menu. Bump on every release.
-const GAME_VERSION = '1.2.0';
+const GAME_VERSION = '1.2.1'; // keep in sync with index.html (meta + ?v= on every file)
 
 const lv = (arr, L) => arr[clamp(L, 1, arr.length) - 1];
 

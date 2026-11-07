@@ -5,7 +5,18 @@
    game over), HUD, keyboard routing.
    ========================================================================= */
 
-const $ = (id) => document.getElementById(id);
+// Missing elements (e.g. a stale cached index.html after an update) must not
+// crash the whole game: warn once and hand back a detached placeholder.
+const missingEls = new Map();
+const $ = (id) => {
+  const el = document.getElementById(id);
+  if (el) return el;
+  if (!missingEls.has(id)) {
+    console.warn(`Pill Survivors: #${id} is missing from index.html (stale cache?)`);
+    missingEls.set(id, document.createElement('div'));
+  }
+  return missingEls.get(id);
+};
 
 const CODEX_TABS = [
   { id: 'weapon',  label: 'Weapons',       items: () => WEAPONS,     hint: 'Acquire this weapon during a run to unlock its entry.', countLabel: 'Acquired' },
