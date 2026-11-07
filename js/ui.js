@@ -11,6 +11,7 @@ const CODEX_TABS = [
   { id: 'weapon',  label: 'Weapons',       items: () => WEAPONS,     hint: 'Acquire this weapon during a run to unlock its entry.', countLabel: 'Acquired' },
   { id: 'evolution', label: 'Evolutions',  items: () => EVOLUTIONS,  hint: 'Combine a max-level weapon with the right prescription.', countLabel: 'Synthesized' },
   { id: 'passive', label: 'Prescriptions', items: () => PASSIVES,    hint: 'Take this prescription during a run to unlock its entry.', countLabel: 'Prescribed' },
+  { id: 'gear',    label: 'Gear',          items: () => GEAR,        hint: 'Find it in a chest. Elites drop small chests, bosses drop big ones.', countLabel: 'Equipped' },
   { id: 'pill',    label: 'Pills',         items: () => TEMP_PILLS,  hint: 'Swallow one during a run to unlock its entry.', countLabel: 'Swallowed' },
   { id: 'enemy',   label: 'Pathogens',     items: () => ENEMY_LIST,  hint: 'Defeat one to study it.', countLabel: 'Killed' }
 ];
@@ -226,7 +227,7 @@ const UI = {
       tile.className = 'codex-tile' + (known ? '' : ' locked') + (item.id === this.codexSel ? ' selected' : '') + (this.isUnseen(tab.id, item.id) ? ' unseen' : '');
       tile.style.setProperty('--c', item.color);
       tile.style.setProperty('--a', item.accent || '#ffffff');
-      tile.innerHTML = (tab.id === 'enemy' ? '<canvas width="56" height="56"></canvas>' : '<span class="pill-icon big"></span>') +
+      tile.innerHTML = (tab.id === 'enemy' ? '<canvas width="56" height="56"></canvas>' : tab.id === 'gear' ? '<span class="gear-icon big"></span>' : '<span class="pill-icon big"></span>') +
         `<span class="tile-name">${known ? item.name : '???'}</span>`;
       tile.onclick = () => { this.codexSel = item.id; this.renderCodex(); };
       grid.appendChild(tile);
@@ -244,7 +245,7 @@ const UI = {
     const count = Save.data.codex[tab.id][item.id] || 0;
     const icon = tab.id === 'enemy'
       ? `<canvas class="cd-portrait${count ? '' : ' locked'}" width="112" height="112"></canvas>`
-      : `<span class="pill-icon huge${count ? '' : ' locked'}" style="--c:${item.color};--a:${item.accent || '#ffffff'}"></span>`;
+      : `<span class="${tab.id === 'gear' ? 'gear-icon' : 'pill-icon'} huge${count ? '' : ' locked'}" style="--c:${item.color};--a:${item.accent || '#ffffff'}"></span>`;
     if (!count) {
       return `<div class="cd-head">${icon}<div><div class="cd-name">???</div><div class="cd-kind">${tab.label}</div></div></div>` +
         `<p class="cd-hint">LOCKED: ${tab.id === 'evolution' ? this.evolutionHint(item) : tab.hint}</p>`;
@@ -264,6 +265,10 @@ const UI = {
       body += `<div class="buff">&#9650; ${item.buff} <span class="muted">per level</span></div>` +
         `<div class="side">&#9660; ${item.side} <span class="muted">per level</span></div>` +
         `<p class="muted">Max level ${item.max}. Buff and side effect stack together.</p>`;
+    } else if (tab.id === 'gear') {
+      body += `<div class="buff">&#9650; ${item.desc}</div>` +
+        `<p class="muted">${GEAR_SLOTS.find((x) => x.id === item.slot).name} slot · <span class="rarity ${item.rarity}">${item.rarity.toUpperCase()}</span> · ` +
+        `${item.rarity === 'rare' ? 'Big chests (bosses)' : 'Small chests (elites)'}. No side effects.</p>`;
     } else if (tab.id === 'pill') {
       body += `<div class="buff">&#9650; ${item.buffDesc}</div><div class="side">&#9660; ${item.sideEffectDesc}</div>` +
         `<p class="muted">Lasts ${(item.duration / 60).toFixed(0)} seconds. Dropped by elites and found on the floor.</p>`;
@@ -535,14 +540,16 @@ const UI = {
 
   showLevelUp() {
     const isChest = game.levelUpSource === 'chest';
-    $('luTitle').textContent = isChest ? 'CARE PACKAGE' : `LEVEL ${game.level - game.pendingLevels + 1}`;
+    const big = game.chestTier !== 'small';
+    $('luTitle').textContent = isChest ? (big ? 'BIG CARE PACKAGE' : 'SUPPLY CRATE') : `LEVEL ${game.level - game.pendingLevels + 1}`;
     if (!(game.banishes > 0)) this.banishMode = false;
     $('luSub').textContent = this.banishMode
       ? 'BANISH: pick a weapon or prescription to remove for the rest of this run. [B] / [Esc] cancels.'
-      : isChest ? 'Pick one free upgrade.' : 'Choose your prescription. Read the side effects.';
+      : isChest ? (big ? 'Pick one: rare gear, an antidote or an evolution.' : 'Pick one: gear or supplies.') : 'Choose your prescription. Read the side effects.';
     $('levelUpScreen').classList.toggle('banishing', !!this.banishMode);
     $('levelUpScreen').classList.remove('hidden');
     $('levelUpScreen').classList.toggle('chest', isChest);
+    $('levelUpScreen').classList.toggle('small-chest', isChest && !big);
     const list = $('cardList');
     list.innerHTML = '';
     game.choices.forEach((c, i) => {
@@ -565,6 +572,32 @@ const UI = {
   },
 
   cardHtml(c, i) {
+    const key = `<div class="key">[${i + 1}]</div>`;
+    if (c.kind === 'gear') {
+      const g = c.def;
+      const slot = GEAR_SLOTS.find((x) => x.id === g.slot).name;
+      const curId = player.gear[g.slot];
+      const cur = curId ? GEAR_BY_ID[curId] : null;
+      return `<div class="card-top" style="--c:${g.color}"><span class="gear-icon"></span>` +
+        `<span class="card-name">${g.name}</span><span class="card-lv"><span class="rarity ${g.rarity}">${g.rarity.toUpperCase()}</span></span></div>` +
+        `<div class="card-kind">GEAR · ${slot.toUpperCase()}</div>` +
+        `<div class="buff">▲ ${g.desc}</div><div class="no-side">No side effects</div>` +
+        (cur ? `<div class="replaces">Replaces <b style="color:${cur.color}">${cur.name}</b> (${cur.desc})</div>` : `<div class="replaces">Empty ${slot.toLowerCase()} slot</div>`) + key;
+    }
+    if (c.kind === 'antidote') {
+      const d = c.def;
+      return `<div class="card-top" style="--c:#3dff8a;--a:#ffffff"><span class="pill-icon"></span>` +
+        `<span class="card-name">Antidote</span><span class="card-lv"><span class="rarity rare">RARE</span></span></div>` +
+        `<div class="card-kind">CURE · <span style="color:${d.color}">${d.name.toUpperCase()}</span></div>` +
+        `<div class="card-desc">Removes this prescription's side effect for the rest of the run. The buff stays.</div>` +
+        `<div class="side cured">▼ ${d.side}</div>` + key;
+    }
+    if (c.kind === 'supply') {
+      const d = c.def;
+      return `<div class="card-top" style="--c:${d.color}"><span class="pill-icon"></span>` +
+        `<span class="card-name">${d.name}</span></div>` +
+        `<div class="card-kind">SUPPLIES</div><div class="card-desc">${d.desc}</div>` + key;
+    }
     if (c.kind === 'gold' || c.kind === 'heal') {
       const gold = c.kind === 'gold';
       return `<div class="card-top" style="--c:${gold ? '#ffd23d' : '#3dff8a'}"><span class="pill-icon"></span>` +
@@ -689,6 +722,15 @@ const UI = {
     $('pauseBuild').innerHTML = this.pauseHtml();
   },
 
+  gearHtml() {
+    return GEAR_SLOTS.map((slot) => {
+      const g = player.gear[slot.id] && GEAR_BY_ID[player.gear[slot.id]];
+      return g
+        ? `<div class="build-row" style="--c:${g.color}"><span class="dot"></span>${g.name} <b>${slot.name}</b> <span class="rarity ${g.rarity}">${g.rarity}</span><div class="mini buff">▲ ${g.desc}</div></div>`
+        : `<div class="build-row muted"><span class="dot" style="--c:#2e3456"></span>${slot.name}: empty</div>`;
+    }).join('');
+  },
+
   pauseHtml() {
     const fmtPct = (v) => (v >= 0 ? '+' : '') + Math.round(v * 100) + '%';
     const run = [
@@ -700,8 +742,7 @@ const UI = {
       ['Gold', game.gold],
       ['Damage dealt', Math.round(game.damageDealt).toLocaleString()],
       ['Damage taken', Math.round(game.damageTaken || 0).toLocaleString()],
-      ['Rerolls', game.rerolls],
-      ['Banishes', game.banishes],
+      ['Rerolls / Banishes', `${game.rerolls} / ${game.banishes}`],
       ['Revives', game.revives]
     ];
     let html = '<div class="pause-run">' + run.map(([k, v]) => `<div><span class="label">${k}</span><span>${v}</span></div>`).join('') + '</div>';
@@ -722,7 +763,8 @@ const UI = {
       const def = PASSIVE_BY_ID[id];
       const L = player.passives[id];
       html += `<div class="build-row" style="--c:${def.color}"><span class="dot"></span>${def.name} <b>LV ${L}/${def.max}</b>` +
-        `<div class="mini buff">▲ ${def.buff} ×${L}</div><div class="mini side">▼ ${def.side} ×${L * stats.sideMult}</div></div>`;
+        `<div class="mini buff">▲ ${def.buff} ×${L}</div>` +
+        (player.cured.includes(id) ? `<div class="mini cured">✚ side effect cured</div>` : `<div class="mini side">▼ ${def.side} ×${L * stats.sideMult}</div>`) + '</div>';
     }
     html += `<div class="muted slots-left">Prescription slots: ${player.passiveOrder.length}/${MAX_PASSIVE_SLOTS}</div>`;
     const pills = player.tempEffects;
@@ -733,6 +775,7 @@ const UI = {
           `<div class="mini buff">▲ ${e.def.buffDesc}</div><div class="mini side">▼ ${e.def.sideEffectDesc}</div></div>`;
       }
     }
+    html += '<h3>Gear</h3>' + this.gearHtml();
     if (game.banished.length) html += `<h3>Banished</h3><div class="muted">${this.banishedNames().join(', ')}</div>`;
     html += '</div></div>';
 
@@ -782,6 +825,7 @@ const UI = {
       html += `<div class="build-row" style="--c:${def.color}"><span class="dot"></span>${def.name} <b>LV ${L}</b>` +
         `<div class="mini buff">▲ ${def.buff} ×${L}</div><div class="mini side">▼ ${def.side} ×${L}</div></div>`;
     }
+    if (Object.keys(player.gear).length) html += '<h3>Gear</h3>' + this.gearHtml();
     html += '</div>';
     return html;
   },
@@ -858,12 +902,19 @@ const UI = {
       const id = player.passiveOrder[i];
       if (id) {
         const def = PASSIVE_BY_ID[id];
-        ph += `<div class="slot passive" title="${def.name}: ${def.buff} / ${def.side}" style="--c:${def.color}"><span class="pill-icon"></span><b>${player.passives[id]}</b></div>`;
+        const cured = player.cured.includes(id);
+        ph += `<div class="slot passive${cured ? ' cured' : ''}" title="${def.name}: ${def.buff} / ${cured ? 'side effect cured' : def.side}" style="--c:${def.color}"><span class="pill-icon"></span><b>${player.passives[id]}</b></div>`;
       } else {
         ph += '<div class="slot passive empty"></div>';
       }
     }
     $('passiveSlots').innerHTML = ph;
+    $('gearSlots').innerHTML = GEAR_SLOTS.map((slot) => {
+      const g = player.gear[slot.id] && GEAR_BY_ID[player.gear[slot.id]];
+      return g
+        ? `<div class="slot gear ${g.rarity}" title="${g.name} (${slot.name}): ${g.desc}" style="--c:${g.color}"><span class="gear-icon"></span></div>`
+        : `<div class="slot gear empty" title="${slot.name}: empty"></div>`;
+    }).join('');
   },
 
   updateBadges() {
