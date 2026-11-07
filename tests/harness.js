@@ -21,7 +21,7 @@ const ROOT = path.resolve(__dirname, '..');
 const INDEX_HTML = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
 
 function scriptFiles() {
-  return [...INDEX_HTML.matchAll(/<script\s+src="([^"]+)"/g)].map((m) => m[1]);
+  return [...INDEX_HTML.matchAll(/<script\s+src="([^"?]+)(?:\?[^"]*)?"/g)].map((m) => m[1]);
 }
 
 function htmlIds() {
@@ -147,6 +147,12 @@ function createGame(opts = {}) {
       return elements.get(id);
     },
     createElement: (tag) => makeEl(tag),
+    // only used for <meta name="game-version">
+    querySelector(sel) {
+      const m = sel.match(/meta\[name="([^"]+)"\]/);
+      const hit = m && INDEX_HTML.match(new RegExp(`<meta name="${m[1]}" content="([^"]*)"`));
+      return hit ? { content: hit[1] } : null;
+    },
     addEventListener() {},
     activeElement: null,
     body: makeEl('body')

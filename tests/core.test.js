@@ -117,4 +117,38 @@ module.exports = [
       t.eq(stored.shop.vitality, 1, 'purchase persisted');
     }
   }
+  ,
+  {
+    name: 'index.html version matches GAME_VERSION on the meta tag and every asset URL',
+    fn(t) {
+      const fs = require('fs');
+      const path = require('path');
+      const html = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
+      const g = t.game();
+      const v = g.run(() => GAME_VERSION);
+      const meta = (html.match(/<meta name="game-version" content="([^"]*)"/) || [])[1];
+      t.eq(meta, v, 'meta game-version');
+      const assets = [...html.matchAll(/(?:src|href)="((?:js\/[^"]+\.js|style\.css)[^"]*)"/g)].map((m) => m[1]);
+      t.ok(assets.length >= 10, `found ${assets.length} assets`);
+      for (const a of assets) t.ok(a.endsWith('?v=' + v), `${a} carries ?v=${v}`);
+    }
+  },
+  {
+    name: 'a missing element (stale cached index.html) does not crash the menu or a run',
+    fn(t) {
+      const g = t.game();
+      const r = g.run(() => {
+        const real = document.getElementById;
+        document.getElementById = (id) => (['menuVersion', 'gearSlots', 'luBanished'].includes(id) ? null : real.call(document, id));
+        try {
+          UI.openMenu();
+          startRun('nurse');
+          __bot({ frames: 120 });
+          openLevelUp('level');
+          return game.state;
+        } finally { document.getElementById = real; }
+      });
+      t.eq(r, 'LEVELUP', 'still playable');
+    }
+  }
 ];
