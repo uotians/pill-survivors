@@ -4,6 +4,45 @@
 
 module.exports = [
   {
+    name: 'banish removes a card for the rest of the run and refills the slot',
+    fn(t) {
+      const g = t.game({ seed: 6 });
+      const r = g.run(() => {
+        startRun('nurse');
+        const startBanishes = game.banishes;
+        openLevelUp('level');
+        const i = game.choices.findIndex((c) => c.kind === 'passive');
+        const target = game.choices[i];
+        const key = target.kind + ':' + target.def.id;
+        const before = game.choices.length;
+        const ok = banishChoice(i);
+        const after = game.choices.map((c) => c.kind + ':' + (c.def && c.def.id));
+        let reoffered = 0;
+        for (let n = 0; n < 500; n++) if (buildChoices().some((c) => c.def && c.kind + ':' + c.def.id === key)) reoffered++;
+        // evolutions / fallback cards cannot be banished; banishes run out
+        while (game.banishes > 0) banishChoice(game.choices.findIndex((c) => c.kind === 'weapon' || c.kind === 'passive'));
+        const noMore = banishChoice(0);
+        return { startBanishes, ok, key, after, before, reoffered, noMore, left: game.banishes,
+          unique: new Set(after).size === after.length };
+      });
+      t.eq(r.startBanishes, 2, 'two banishes per run by default');
+      t.ok(r.ok, 'banish succeeded');
+      t.ok(!r.after.includes(r.key), 'banished card left the offer');
+      t.eq(r.after.length, r.before, 'slot was refilled');
+      t.ok(r.unique, 'no duplicate cards after refill');
+      t.eq(r.reoffered, 0, 'never offered again');
+      t.ok(!r.noMore && r.left === 0, 'cannot banish without charges');
+    }
+  },
+  {
+    name: 'Contraindication pharmacy upgrade adds banishes',
+    fn(t) {
+      const g = t.game();
+      const n = g.run(() => { Save.data.shop.banish = 2; startRun('nurse'); return game.banishes; });
+      t.eq(n, 4, 'base 2 + 2 levels');
+    }
+  },
+  {
     name: 'level-up offers both kinds even with full slots (upgrades only)',
     fn(t) {
       const g = t.game({ seed: 5 });

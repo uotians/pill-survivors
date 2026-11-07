@@ -54,7 +54,8 @@ const UI = {
     $('charStart').onclick = () => this.startSelected();
     $('shopBack').onclick = () => this.openMenu();
     $('resetBtn').onclick = () => this.resetProgress();
-    $('rerollBtn').onclick = () => rerollChoices();
+    $('rerollBtn').onclick = () => { this.banishMode = false; rerollChoices(); };
+    $('banishBtn').onclick = () => this.toggleBanish();
     $('resumeBtn').onclick = () => this.resume();
     $('quitBtn').onclick = () => this.openMenu();
     $('retryBtn').onclick = () => startRun(this.selectedChar, this.selectedStage);
@@ -535,14 +536,19 @@ const UI = {
   showLevelUp() {
     const isChest = game.levelUpSource === 'chest';
     $('luTitle').textContent = isChest ? 'CARE PACKAGE' : `LEVEL ${game.level - game.pendingLevels + 1}`;
-    $('luSub').textContent = isChest ? 'Pick one free upgrade.' : 'Choose your prescription. Read the side effects.';
+    if (!(game.banishes > 0)) this.banishMode = false;
+    $('luSub').textContent = this.banishMode
+      ? 'BANISH: pick a weapon or prescription to remove for the rest of this run. [B] / [Esc] cancels.'
+      : isChest ? 'Pick one free upgrade.' : 'Choose your prescription. Read the side effects.';
+    $('levelUpScreen').classList.toggle('banishing', !!this.banishMode);
     $('levelUpScreen').classList.remove('hidden');
     $('levelUpScreen').classList.toggle('chest', isChest);
     const list = $('cardList');
     list.innerHTML = '';
     game.choices.forEach((c, i) => {
       const card = document.createElement('button');
-      card.className = 'card' + (c.kind === 'evolution' ? ' evolution' : '');
+      const banishable = c.kind === 'weapon' || c.kind === 'passive';
+      card.className = 'card' + (c.kind === 'evolution' ? ' evolution' : '') + (this.banishMode && !banishable ? ' no-banish' : '');
       card.style.animationDelay = `${i * 60}ms`;
       card.innerHTML = this.cardHtml(c, i);
       card.onclick = () => this.pick(i);
@@ -551,6 +557,10 @@ const UI = {
     const rr = $('rerollBtn');
     rr.classList.toggle('hidden', game.rerolls <= 0);
     rr.textContent = `Reroll (${game.rerolls}) [R]`;
+    $('luBanished').innerHTML = game.banished.length ? 'Banished: ' + this.banishedNames().join(', ') : '';
+    const bb = $('banishBtn');
+    bb.classList.toggle('hidden', !(game.banishes > 0));
+    bb.textContent = this.banishMode ? 'Cancel banish [B]' : `Banish (${game.banishes}) [B]`;
     this.inputGuardUntil = performance.now() + 350;
   },
 
@@ -636,12 +646,35 @@ const UI = {
       const o = old ? old[k] : undefined;
       const changed = old && o !== v;
       const val = changed ? `<span class="was">${o === undefined ? '—' : o}</span> &rarr; <b class="up">${v}</b>` : `<b>${v}</b>`;
-      return `<div><span>${k}</span>${val}</div>`;
+      return `<div><span>${k}</span><em>${val}</em></div>`;
     }).join('') + '</div>';
+  },
+
+  banishedNames() {
+    return game.banished.map((k) => {
+      const [kind, id] = k.split(':');
+      const def = kind === 'weapon' ? WEAPON_BY_ID[id] : PASSIVE_BY_ID[id];
+      return def ? `<span style="color:${def.color}">${def.name}</span>` : id;
+    });
+  },
+
+  toggleBanish() {
+    if (game.state !== State.LEVELUP || !(game.banishes > 0)) return;
+    this.banishMode = !this.banishMode;
+    this.showLevelUp();
+    this.inputGuardUntil = 0;
   },
 
   pick(i) {
     if (performance.now() < this.inputGuardUntil) return;
+    if (this.banishMode) {
+      if (banishChoice(i)) {
+        this.banishMode = false;
+        this.showLevelUp();
+        this.inputGuardUntil = 0;
+      }
+      return;
+    }
     chooseOption(i);
   },
 
@@ -668,6 +701,7 @@ const UI = {
       ['Damage dealt', Math.round(game.damageDealt).toLocaleString()],
       ['Damage taken', Math.round(game.damageTaken || 0).toLocaleString()],
       ['Rerolls', game.rerolls],
+      ['Banishes', game.banishes],
       ['Revives', game.revives]
     ];
     let html = '<div class="pause-run">' + run.map(([k, v]) => `<div><span class="label">${k}</span><span>${v}</span></div>`).join('') + '</div>';
@@ -699,6 +733,7 @@ const UI = {
           `<div class="mini buff">▲ ${e.def.buffDesc}</div><div class="mini side">▼ ${e.def.sideEffectDesc}</div></div>`;
       }
     }
+    if (game.banished.length) html += `<h3>Banished</h3><div class="muted">${this.banishedNames().join(', ')}</div>`;
     html += '</div></div>';
 
     // Current character stats (after every prescription, pill and upgrade).
@@ -907,7 +942,9 @@ const UI = {
         break;
       case State.LEVELUP:
         if (digit >= 1 && digit <= game.choices.length) this.pick(digit - 1);
-        else if (code === 'KeyR') rerollChoices();
+        else if (code === 'KeyR') { this.banishMode = false; rerollChoices(); }
+        else if (code === 'KeyB') this.toggleBanish();
+        else if (code === 'Escape' && this.banishMode) this.toggleBanish();
         break;
       case State.GAMEOVER:
         if (performance.now() < this.inputGuardUntil) break;

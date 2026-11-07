@@ -40,6 +40,7 @@ const BASE_STATS = {
   enemyHp: 1,
   revives: 0,
   rerolls: 0,
+  banishes: 2,       // remove a level-up card for the rest of the run
   choices: 3,
   // set by temporary pills
   inverted: false,
@@ -564,6 +565,7 @@ const SHOP = [
   { id: 'growth',   name: 'Fast Learner',   desc: '+5% XP gain',            max: 3, cost: 100, apply(s, L) { s.growth += 0.05 * L; } },
   { id: 'fortune',  name: 'Fortune',        desc: '+10% Gold & Luck',       max: 3, cost: 100, apply(s, L) { s.greed += 0.1 * L; s.luck += 0.1 * L; } },
   { id: 'reroll',   name: 'Second Opinion', desc: '+1 Reroll per run',      max: 3, cost: 150, apply(s, L) { s.rerolls += L; } },
+  { id: 'banish',   name: 'Contraindication', desc: '+1 Banish per run',    max: 3, cost: 150, apply(s, L) { s.banishes += L; } },
   { id: 'revive',   name: 'Defibrillation', desc: 'Revive once per run',    max: 1, cost: 600, requires: 'frequentPatient', apply(s, L) { s.revives += L; } }
 ];
 

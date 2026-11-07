@@ -381,6 +381,7 @@ kbd {
 .wstats div { display: flex; justify-content: space-between; gap: 6px; }
 .wstats span { color: #8a93b8; }
 .wstats b { color: #dfe3f8; font-weight: bold; }
+.wstats em { font-style: normal; white-space: nowrap; }
 .wstats .was { color: #6f7894; text-decoration: line-through; }
 .wstats b.up { color: #5dff9a; }
 .card { display: flex; flex-direction: column; justify-content: flex-start; }
@@ -389,6 +390,14 @@ kbd {
 .build-row .wtags, .build-row .waim, .build-row .wstats { margin-left: 16px; }
 .build-row .dealt { float: right; font-size: 11px; color: #ffd23d; }
 .slots-left { font-size: 11px; margin: 4px 0 10px; }
+
+/* Level-up: reroll / banish */
+.lu-actions { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+.lu-banished { font-size: 12px; min-height: 1em; margin: 0 0 8px; }
+#levelUpScreen.banishing #luSub { color: #ff5d6c; }
+#levelUpScreen.banishing .card:not(.no-banish) { border-color: #ff4d5e; box-shadow: 0 0 14px rgba(255, 77, 94, 0.35); }
+#levelUpScreen.banishing .card:not(.no-banish):hover { border-color: #ff8a9a; }
+#levelUpScreen.banishing .card.no-banish { opacity: 0.4; cursor: not-allowed; }
 
 /* Pause screen */
 .pause-run {

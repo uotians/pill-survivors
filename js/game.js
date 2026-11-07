@@ -101,6 +101,8 @@ function startRun(charId, stageId) {
     bossEvents: 0,
     revives: 0,
     rerolls: 0,
+    banishes: 0,
+    banished: [],    // banishKey()s never offered again this run
     finalSpawned: false,
     victory: false,
     endTimer: 0,
@@ -152,6 +154,7 @@ function startRun(charId, stageId) {
   player.hp = stats.maxHp;
   game.revives = stats.revives;
   game.rerolls = stats.rerolls;
+  game.banishes = stats.banishes;
   game.banner = { text: stage.name.toUpperCase(), sub: 'survive 10:00 · every prescription has a side effect', life: 200, maxLife: 200 };
   UI.onRunStart();
 }
@@ -232,9 +235,14 @@ function addWeapon(id) {
   discover('weapon', id);
 }
 
-function buildChoices() {
+// Banished cards are never offered again this run ('weapon:pistol', 'passive:steroids').
+const banishKey = (c) => c.kind + ':' + c.def.id;
+
+// Every weapon / prescription that could be offered right now (no evolutions).
+function choicePool() {
   const pool = [];
   for (const def of WEAPONS) {
+    if (game.banished.includes('weapon:' + def.id)) continue;
     const w = player.weapons.find((x) => x.id === def.id || x.def.from === def.id);
     if (w) {
       if (!w.def.evo && w.level < def.max) pool.push({ kind: 'weapon', def, level: w.level + 1, weight: 1.3 });
@@ -243,6 +251,7 @@ function buildChoices() {
     }
   }
   for (const def of PASSIVES) {
+    if (game.banished.includes('passive:' + def.id)) continue;
     const L = player.passives[def.id] || 0;
     if (L > 0) {
       if (L < def.max) pool.push({ kind: 'passive', def, level: L + 1, weight: 1 });
@@ -250,7 +259,11 @@ function buildChoices() {
       pool.push({ kind: 'passive', def, level: 1, weight: 0.85 });
     }
   }
+  return pool;
+}
 
+function buildChoices() {
+  const pool = choicePool();
   const count = stats.choices + (Math.random() < (stats.luck - 1) * 0.6 ? 1 : 0);
   const picks = [];
   const evos = eligibleEvolutions().map((def) => ({ kind: 'evolution', def, level: 1, weight: 5 }));
@@ -326,6 +339,24 @@ function chooseOption(index) {
     game.state = State.PLAYING;
     UI.hideLevelUp();
   }
+}
+
+// Removes a weapon / prescription card for the rest of the run and refills
+// that slot with something not already on offer (same kind if possible).
+function banishChoice(index) {
+  if (game.state !== State.LEVELUP || game.banishes <= 0) return false;
+  const c = game.choices[index];
+  if (!c || (c.kind !== 'weapon' && c.kind !== 'passive')) return false;
+  game.banishes--;
+  game.banished.push(banishKey(c));
+  const shown = new Set(game.choices.filter((x) => x.def).map(banishKey));
+  const pool = choicePool().filter((x) => !shown.has(banishKey(x)));
+  const same = pool.filter((x) => x.kind === c.kind);
+  const pick = same.length ? weightedPick(same) : pool.length ? weightedPick(pool) : null;
+  if (pick) game.choices[index] = pick;
+  else game.choices.splice(index, 1);
+  if (!game.choices.length) game.choices = buildChoices(); // gold / heal fallback
+  return true;
 }
 
 function rerollChoices() {
