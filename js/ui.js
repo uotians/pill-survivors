@@ -56,7 +56,6 @@ const UI = {
     $('shopBack').onclick = () => this.openMenu();
     $('resetBtn').onclick = () => this.resetProgress();
     $('rerollBtn').onclick = () => { this.banishMode = false; rerollChoices(); };
-    $('banishBtn').onclick = () => this.toggleBanish();
     $('resumeBtn').onclick = () => this.resume();
     $('quitBtn').onclick = () => this.openMenu();
     $('retryBtn').onclick = () => startRun(this.selectedChar, this.selectedStage);
@@ -552,22 +551,30 @@ const UI = {
     $('levelUpScreen').classList.toggle('small-chest', isChest && !big);
     const list = $('cardList');
     list.innerHTML = '';
+    const canBanish = game.banishes > 0;
     game.choices.forEach((c, i) => {
+      const wrap = document.createElement('div');
+      wrap.className = 'card-wrap';
+      wrap.style.animationDelay = `${i * 60}ms`;
       const card = document.createElement('button');
       const banishable = c.kind === 'weapon' || c.kind === 'passive';
       card.className = 'card' + (c.kind === 'evolution' ? ' evolution' : '') + (this.banishMode && !banishable ? ' no-banish' : '');
-      card.style.animationDelay = `${i * 60}ms`;
       card.innerHTML = this.cardHtml(c, i);
       card.onclick = () => this.pick(i);
-      list.appendChild(card);
+      wrap.appendChild(card);
+      // Per-card banish button (kept as an invisible spacer on cards that cannot be banished).
+      const ban = document.createElement('button');
+      ban.className = 'card-banish' + (banishable && canBanish ? '' : ' off');
+      ban.innerHTML = `&#10005; Banish <small>(${game.banishes} left)</small>`;
+      ban.title = 'Remove this from all future level-ups this run';
+      ban.onclick = () => this.banishCard(i);
+      if (!isChest) wrap.appendChild(ban); // chest cards can never be banished
+      list.appendChild(wrap);
     });
     const rr = $('rerollBtn');
     rr.classList.toggle('hidden', game.rerolls <= 0);
     rr.textContent = `Reroll (${game.rerolls}) [R]`;
     $('luBanished').innerHTML = game.banished.length ? 'Banished: ' + this.banishedNames().join(', ') : '';
-    const bb = $('banishBtn');
-    bb.classList.toggle('hidden', !(game.banishes > 0));
-    bb.textContent = this.banishMode ? 'Cancel banish [B]' : `Banish (${game.banishes}) [B]`;
     this.inputGuardUntil = performance.now() + 350;
   },
 
@@ -691,6 +698,15 @@ const UI = {
     });
   },
 
+  banishCard(i) {
+    if (performance.now() < this.inputGuardUntil) return;
+    if (banishChoice(i)) {
+      this.banishMode = false;
+      this.showLevelUp();
+      this.inputGuardUntil = 0;
+    }
+  },
+
   toggleBanish() {
     if (game.state !== State.LEVELUP || !(game.banishes > 0)) return;
     this.banishMode = !this.banishMode;
@@ -701,11 +717,7 @@ const UI = {
   pick(i) {
     if (performance.now() < this.inputGuardUntil) return;
     if (this.banishMode) {
-      if (banishChoice(i)) {
-        this.banishMode = false;
-        this.showLevelUp();
-        this.inputGuardUntil = 0;
-      }
+      this.banishCard(i);
       return;
     }
     chooseOption(i);
