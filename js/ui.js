@@ -673,7 +673,7 @@ const UI = {
     const fam = def.family;
     const sec = (f) => (f / 60).toFixed(f < 60 ? 2 : 1) + ' s';
     const num = (v) => (v < 10 ? Math.round(v * 10) / 10 : Math.round(v));
-    const countName = { pistol: 'Capsules', scalpel: 'Scalpels', saw: 'Saws', orbit: 'Pills', zap: 'Strikes',
+    const countName = { pistol: 'Capsules', scalpel: 'Scalpels', saw: 'Saws', orbit: 'Pills', zap: 'Strikes', rifle: 'Darts',
       flask: 'Flasks', syringe: 'Needles', whip: 'Directions' }[fam] || 'Amount';
     const rows = [['Damage', num(ws.dmg)]];
     if (b.amount !== undefined) rows.push([countName, ws.amount]);
@@ -681,7 +681,9 @@ const UI = {
     if (b.cd > 1) rows.push(['Cooldown', sec(ws.cd)]);
     if (b.pierce !== undefined) rows.push(['Pierce', b.pierce >= 999 ? '∞' : ws.pierce]);
     if (b.chains) rows.push(['Chains', ws.chains]);
-    if (b.range) rows.push(['Chain range', Math.round(ws.range) + ' px']);
+    if (b.range) rows.push([fam === 'zap' ? 'Chain range' : 'Range', Math.round(ws.range) + ' px']);
+    if (b.stun) rows.push(['Stun', sec(b.stun)]);
+    if (PRECISION_FAMILIES.includes(fam)) rows.push(['Vs elites/bosses', '×' + PRECISION_MULT]);
     if (b.radius) rows.push([fam === 'orbit' ? 'Orbit radius' : fam === 'flask' ? 'Pool radius' : 'Radius', Math.round(ws.radius) + ' px']);
     if (b.length) rows.push(['Length', Math.round(b.length * stats.area) + ' px']);
     if (b.dur) rows.push([fam === 'flask' ? 'Pool lasts' : 'Duration', b.dur >= 1e8 ? 'Permanent' : sec(ws.dur)]);

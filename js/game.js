@@ -844,6 +844,31 @@ const WEAPON_LOGIC = {
     }
   },
 
+  // Tranquilizer Rifle / Elephant Tranquilizer: heavy piercing darts at the
+  // toughest enemies in range (elites and bosses first). Holds fire otherwise.
+  rifle(w, ws) {
+    w.timer--;
+    if (w.timer > 0) return;
+    const r2 = ws.range * ws.range;
+    const targets = enemies
+      .filter((e) => !e.dead && dist2(player.x, player.y, e.x, e.y) < r2)
+      .sort((a, b) => (b.boss - a.boss) || (b.elite - a.elite) || (b.hp - a.hp))
+      .slice(0, ws.amount);
+    if (!targets.length) { w.timer = 10; return; }
+    w.timer = ws.cd;
+    // Spare darts go to the toughest target (slightly spread so they don't overlap).
+    for (let i = 0; i < ws.amount; i++) {
+      const t = targets[i] || targets[0];
+      const spread = targets[i] ? 0 : (i % 2 ? 1 : -1) * 0.06 * Math.ceil(i / 2);
+      const a = Math.atan2(t.y - player.y, t.x - player.x) + spread + tremor();
+      const p = spawnProjectile('dart', a, ws, w.def.color, w.def.accent);
+      p.life = Math.ceil(ws.range / ws.speed) + 10;
+      p.stun = ws.stun || w.def.stun || 0;
+      if (i === 0) applyRecoil(a);
+    }
+    Sfx.shoot();
+  },
+
   // Ultrasound / Lullaby: expanding rings that hit each enemy once.
   wave(w, ws) {
     w.timer--;
@@ -1020,6 +1045,7 @@ function updateProjectiles() {
         if (p.rehit) p.hitAt.set(e, game.time + p.rehit);
         else p.hit.add(e);
         damageEnemy(e, p.dmg * (p.eliteMult && (e.elite || e.boss) ? p.eliteMult : 1), p.vx * 0.3, p.vy * 0.3, false, p.family);
+        if (p.stun && !e.boss) e.stunUntil = Math.max(e.stunUntil || 0, game.time + p.stun);
         spawnParticles(p.x, p.y, 3, '#fff3b0', 3, 12, 2);
         Sfx.hit();
         if (p.explosive) explode(p.x, p.y, p.dmg * 0.6);
@@ -1245,7 +1271,10 @@ function damageEnemy(e, dmg, kx, ky, quiet = false, src = null) {
   }
   let amount = dmg;
   let crit = false;
-  if (e.elite || e.boss) amount *= stats.bossDmg;
+  if (e.elite || e.boss) {
+    amount *= stats.bossDmg;
+    if (src && PRECISION_FAMILIES.includes(src)) amount *= PRECISION_MULT;
+  }
   if (!quiet && Math.random() < 0.04 * stats.luck + stats.crit) { amount *= 2; crit = true; }
   if (e.shield > 0) {
     const absorbed = Math.min(e.shield, amount);

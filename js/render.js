@@ -732,6 +732,30 @@ function drawProjectiles() {
       ctx.lineTo(11, 0);
       ctx.stroke();
       ctx.restore();
+    } else if (p.kind === 'dart') {
+      // Tranquilizer dart: long brass body, red fletching, glowing tip.
+      ctx.save();
+      ctx.translate(p.x, p.y);
+      ctx.rotate(p.angle);
+      drawGlow(8, 0, 12, p.color, 0.35);
+      ctx.fillStyle = p.color;
+      ctx.fillRect(-12, -2.5, 20, 5);
+      ctx.fillStyle = '#dfe6ff';
+      ctx.beginPath();
+      ctx.moveTo(16, 0);
+      ctx.lineTo(8, -3);
+      ctx.lineTo(8, 3);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = p.accent;
+      ctx.beginPath();
+      ctx.moveTo(-12, 0);
+      ctx.lineTo(-18, -6);
+      ctx.lineTo(-15, 0);
+      ctx.lineTo(-18, 6);
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
     } else if (p.kind === 'saw') {
       drawSaw(p);
     } else {

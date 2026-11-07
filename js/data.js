@@ -6,7 +6,7 @@
    ========================================================================= */
 
 // Shown on the main menu. Bump on every release.
-const GAME_VERSION = '1.3.0'; // keep in sync with index.html (meta + ?v= on every file)
+const GAME_VERSION = '1.4.0'; // keep in sync with index.html (meta + ?v= on every file)
 
 const lv = (arr, L) => arr[clamp(L, 1, arr.length) - 1];
 
@@ -135,14 +135,14 @@ const WEAPONS = [
     levelText: [
       'Auto-fires capsules at the nearest enemy.',
       '+1 capsule per volley',
-      '+5 damage',
+      '+6 damage',
       '+1 capsule per volley',
-      '+5 damage, +1 pierce, faster reload'
+      '+6 damage, +1 pierce, faster reload'
     ],
     base: (L) => ({
-      dmg: lv([10, 10, 15, 15, 20], L),
+      dmg: lv([16, 16, 22, 22, 28], L),
       amount: lv([1, 2, 2, 3, 3], L),
-      cd: lv([55, 55, 50, 50, 42], L),
+      cd: lv([40, 40, 36, 36, 30], L),
       pierce: lv([1, 1, 1, 1, 2], L),
       speed: 7.5
     })
@@ -161,9 +161,9 @@ const WEAPONS = [
       '+4 damage, +1 scalpel, faster'
     ],
     base: (L) => ({
-      dmg: lv([8, 8, 12, 12, 16], L),
+      dmg: lv([11, 11, 15, 15, 19], L),
       amount: lv([2, 3, 3, 4, 5], L),
-      cd: lv([70, 70, 64, 64, 54], L),
+      cd: lv([60, 60, 56, 56, 48], L),
       pierce: lv([2, 2, 3, 3, 4], L),
       speed: 9
     })
@@ -202,12 +202,12 @@ const WEAPONS = [
       '+1 pill, lasts longer, spins faster'
     ],
     base: (L) => ({
-      dmg: lv([10, 10, 14, 14, 18], L),
-      amount: lv([2, 3, 3, 4, 5], L),
+      dmg: lv([16, 16, 20, 20, 24], L),
+      amount: lv([3, 4, 4, 5, 6], L),
       radius: lv([80, 80, 95, 95, 105], L),
-      rot: lv([0.06, 0.06, 0.065, 0.065, 0.08], L),
-      dur: lv([180, 180, 200, 200, 260], L),
-      cd: lv([150, 150, 140, 140, 120], L)
+      rot: lv([0.07, 0.07, 0.075, 0.075, 0.085], L),
+      dur: lv([220, 220, 240, 240, 300], L),
+      cd: lv([120, 120, 110, 110, 100], L)
     })
   },
   {
@@ -245,9 +245,9 @@ const WEAPONS = [
       '+1 flask, +2 damage, faster'
     ],
     base: (L) => ({
-      dmg: lv([5, 5, 7, 7, 9], L),
+      dmg: lv([4, 4, 6, 6, 8], L),
       amount: lv([1, 1, 2, 2, 3], L),
-      radius: lv([45, 54, 54, 65, 65], L),
+      radius: lv([40, 48, 48, 58, 58], L),
       dur: lv([150, 150, 150, 190, 190], L),
       cd: lv([140, 140, 135, 135, 115], L),
       tick: 15
@@ -267,12 +267,12 @@ const WEAPONS = [
       '+1 needle, +4 damage, faster'
     ],
     base: (L) => ({
-      dmg: lv([7, 7, 10, 10, 13], L),
-      amount: lv([1, 2, 2, 3, 4], L),
-      cd: lv([66, 66, 60, 60, 54], L),
+      dmg: lv([12, 12, 16, 16, 20], L),
+      amount: lv([2, 3, 3, 4, 5], L),
+      cd: lv([48, 48, 44, 44, 38], L),
       pierce: 1,
-      speed: 6.5,
-      turn: lv([0.08, 0.08, 0.11, 0.11, 0.13], L)
+      speed: 7,
+      turn: lv([0.12, 0.12, 0.15, 0.15, 0.17], L)
     })
   },
   {
@@ -310,10 +310,34 @@ const WEAPONS = [
       '+5 damage, stronger push'
     ],
     base: (L) => ({
-      dmg: lv([10, 10, 15, 15, 20], L),
-      radius: lv([150, 180, 180, 215, 215], L),
-      cd: lv([130, 130, 130, 110, 110], L),
+      dmg: lv([8, 8, 13, 13, 18], L),
+      radius: lv([130, 160, 160, 195, 205], L),
+      cd: lv([145, 145, 140, 115, 110], L),
       knock: lv([5, 5, 5, 5, 8], L)
+    })
+  },
+  {
+    id: 'rifle',
+    name: 'Tranquilizer Rifle',
+    color: '#e0c27a',
+    accent: '#ff4d5e',
+    max: 5,
+    stun: 30,
+    levelText: [
+      'Fires a heavy dart at the toughest enemy in range. Pierces a line and stuns.',
+      '+15 damage',
+      '+1 pierce, longer stun',
+      '+1 dart, faster',
+      '+25 damage, +1 pierce'
+    ],
+    base: (L) => ({
+      dmg: lv([45, 60, 60, 60, 85], L),
+      amount: lv([1, 1, 1, 2, 2], L),
+      cd: lv([90, 90, 90, 72, 72], L),
+      pierce: lv([3, 3, 4, 4, 5], L),
+      speed: 13,
+      stun: lv([30, 30, 50, 50, 50], L),
+      range: 520
     })
   }
 ];
@@ -330,8 +354,15 @@ const WEAPON_INFO = {
   flask:   { tags: ['Thrown', 'Area (AoE)', 'Damage over time'], aim: 'Aimed / random nearby enemy' },
   syringe: { tags: ['Projectile', 'Homing'],                 aim: 'Auto: seeks enemies' },
   whip:    { tags: ['Melee', 'Sweep'],                       aim: 'Aim direction (left / right)' },
-  wave:    { tags: ['Area (AoE)', 'Ring', 'Knockback'],      aim: 'Expands from you' }
+  wave:    { tags: ['Area (AoE)', 'Ring', 'Knockback'],      aim: 'Expands from you' },
+  rifle:   { tags: ['Projectile', 'Piercing', 'Stun'],       aim: 'Auto: toughest enemy in range' }
 };
+
+// Precision weapons (single-target projectiles) hit elites and bosses harder:
+// AoE clears crowds, precision kills the big ones.
+const PRECISION_FAMILIES = ['pistol', 'scalpel', 'saw', 'syringe', 'rifle'];
+const PRECISION_MULT = 1.5;
+for (const fam of PRECISION_FAMILIES) WEAPON_INFO[fam].tags.push('Precision');
 
 // --------------------------------------------- Prescriptions (passives) --
 // THE THEME: every prescription has a permanent, stacking side effect.
@@ -698,6 +729,15 @@ EVOLUTIONS.push(
     stun: 60,
     applySide(s, k) { s.drowsy += 2 * k; },
     base: () => ({ dmg: 20, radius: 250, cd: 80, knock: 4 })
+  },
+  {
+    id: 'elephant', name: 'Elephant Tranquilizer', from: 'rifle', requires: 'betablockers', family: 'rifle',
+    color: '#ffd23d', accent: '#ff4d5e', evo: true, max: 1,
+    desc: 'Darts sized for an elephant: pierce everything in a line and knock enemies out.',
+    side: 'Massive recoil: every shot shoves you backwards.',
+    stun: 90,
+    applySide(s, k) { s.recoil += 3 * k; },
+    base: () => ({ dmg: 140, amount: 3, cd: 70, pierce: 999, speed: 15, stun: 90, range: 600 })
   }
 );
 const EVOLUTION_BY_ID = byId(EVOLUTIONS);
@@ -718,6 +758,8 @@ const LORE = {
   'weapon:syringe': 'Self-guided needles. They always find a vein. Or a germ.',
   'weapon:whip': 'A roll of bandages, swung with confidence and very little training.',
   'weapon:wave': 'Medical imaging at a volume that is no longer strictly diagnostic.',
+  'weapon:rifle': 'Borrowed from the zoo. Nobody has asked for it back.',
+  'evolution:elephant': 'Dosage calculated for six tonnes. Applied to everything.',
   'evolution:massvax': 'Everyone gets a shot. Everyone. Whether they want one or not.',
   'evolution:tourniquet': 'Stops your bleeding by making everyone else bleed instead.',
   'evolution:lullaby': 'Hush now. Everybody sleeps. Including, occasionally, you.',
