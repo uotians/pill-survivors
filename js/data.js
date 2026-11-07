@@ -5,6 +5,9 @@
    prescriptions (passives), temporary pills, enemies, events, shop.
    ========================================================================= */
 
+// Shown on the main menu. Bump on every release.
+const GAME_VERSION = '1.1.0';
+
 const lv = (arr, L) => arr[clamp(L, 1, arr.length) - 1];
 
 const BASE_RADIUS = 15;
@@ -37,6 +40,7 @@ const BASE_STATS = {
   enemyHp: 1,
   revives: 0,
   rerolls: 0,
+  banishes: 2,       // remove a level-up card for the rest of the run
   choices: 3,
   // set by temporary pills
   inverted: false,
@@ -314,6 +318,21 @@ const WEAPONS = [
   }
 ];
 
+// How each weapon family works, shown on level-up cards and in the pause screen.
+// tags: damage delivery; aim: how it picks a direction.
+const WEAPON_INFO = {
+  pistol:  { tags: ['Projectile', 'Piercing'],               aim: 'Aimed (cursor / nearest enemy)' },
+  scalpel: { tags: ['Projectile', 'Piercing', 'Spread'],     aim: 'Aimed (cursor / nearest enemy)' },
+  saw:     { tags: ['Projectile', 'Pierces all', 'Returns'], aim: 'Aimed (cursor / nearest enemy)' },
+  aura:    { tags: ['Area (AoE)', 'Damage over time', 'Knockback'], aim: 'Always around you' },
+  orbit:   { tags: ['Melee', 'Orbiting', 'Contact'],         aim: 'Circles around you' },
+  zap:     { tags: ['Lightning', 'Chains'],                  aim: 'Auto: random nearby enemy' },
+  flask:   { tags: ['Thrown', 'Area (AoE)', 'Damage over time'], aim: 'Aimed / random nearby enemy' },
+  syringe: { tags: ['Projectile', 'Homing'],                 aim: 'Auto: seeks enemies' },
+  whip:    { tags: ['Melee', 'Sweep'],                       aim: 'Aim direction (left / right)' },
+  wave:    { tags: ['Area (AoE)', 'Ring', 'Knockback'],      aim: 'Expands from you' }
+};
+
 // --------------------------------------------- Prescriptions (passives) --
 // THE THEME: every prescription has a permanent, stacking side effect.
 const PASSIVES = [
@@ -546,6 +565,7 @@ const SHOP = [
   { id: 'growth',   name: 'Fast Learner',   desc: '+5% XP gain',            max: 3, cost: 100, apply(s, L) { s.growth += 0.05 * L; } },
   { id: 'fortune',  name: 'Fortune',        desc: '+10% Gold & Luck',       max: 3, cost: 100, apply(s, L) { s.greed += 0.1 * L; s.luck += 0.1 * L; } },
   { id: 'reroll',   name: 'Second Opinion', desc: '+1 Reroll per run',      max: 3, cost: 150, apply(s, L) { s.rerolls += L; } },
+  { id: 'banish',   name: 'Contraindication', desc: '+1 Banish per run',    max: 3, cost: 150, apply(s, L) { s.banishes += L; } },
   { id: 'revive',   name: 'Defibrillation', desc: 'Revive once per run',    max: 1, cost: 600, requires: 'frequentPatient', apply(s, L) { s.revives += L; } }
 ];
 

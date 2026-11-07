@@ -49,9 +49,10 @@
         <div><kbd>WASD</kbd> / <kbd>Arrows</kbd> move — weapons fire automatically</div>
         <div><kbd>Mouse</kbd> aim (see Settings)</div>
         <div><kbd>1</kbd>-<kbd>4</kbd> pick upgrade</div>
-        <div><kbd>P</kbd> pause</div>
+        <div><kbd>P</kbd> / <kbd>Esc</kbd> pause &amp; run details</div>
         <div><kbd>M</kbd> mute</div>
       </div>
+      <p id="menuVersion" class="version"></p>
     </div>
   </div>
 
@@ -131,7 +132,11 @@
       <h2 id="luTitle">LEVEL UP</h2>
       <p id="luSub" class="tagline"></p>
       <div id="cardList" class="card-list"></div>
-      <button id="rerollBtn" class="btn alt small">Reroll [R]</button>
+      <p id="luBanished" class="lu-banished muted"></p>
+      <div class="lu-actions">
+        <button id="rerollBtn" class="btn alt small">Reroll [R]</button>
+        <button id="banishBtn" class="btn danger small">Banish [B]</button>
+      </div>
     </div>
   </div>
 
