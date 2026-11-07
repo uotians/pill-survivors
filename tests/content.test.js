@@ -186,7 +186,8 @@ module.exports = [
         for (const ch of CHARACTERS) {
           Save.data.chars[ch.id] = true;
           startRun(ch.id);
-          const b = __bot({ untilTime: 60, frames: 60 * 120, keepAlive: true });
+          // Stand still: enemies come to us, so short-range weapons (aura) get their chance too.
+          const b = __bot({ untilTime: 60, frames: 60 * 120, keepAlive: true, move: 'none' });
           out[ch.id] = { weapon: player.weapons[0].def.family, kills: b.kills };
         }
         return out;
