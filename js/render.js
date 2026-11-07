@@ -402,15 +402,19 @@ function drawPickups() {
       ctx.fillRect(p.x - 10.5, p.y + bob - 4, 5, 5);
       ctx.fillRect(p.x + 5.5, p.y + bob - 4, 5, 5);
     } else if (p.type === 'chest') {
-      drawGlow(p.x, p.y, 44, '#ffe14d', 0.3 + Math.sin(p.age * 0.1) * 0.1);
-      ctx.fillStyle = '#8a4b1f';
-      ctx.fillRect(p.x - 16, p.y - 10 + bob, 32, 22);
-      ctx.fillStyle = '#ffd23d';
-      ctx.fillRect(p.x - 16, p.y - 3 + bob, 32, 4);
-      ctx.fillRect(p.x - 3, p.y - 6 + bob, 6, 10);
-      ctx.strokeStyle = '#ffd23d';
+      // Big chest (bosses): gold trim. Small chest (elites): smaller, steel trim.
+      const small = p.tier === 'small';
+      const k = small ? 0.7 : 1;
+      const trim = small ? '#9fd8ff' : '#ffd23d';
+      drawGlow(p.x, p.y, 44 * k, small ? '#5ec8ff' : '#ffe14d', 0.3 + Math.sin(p.age * 0.1) * 0.1);
+      ctx.fillStyle = small ? '#3a4566' : '#8a4b1f';
+      ctx.fillRect(p.x - 16 * k, p.y + (-10 * k) + bob, 32 * k, 22 * k);
+      ctx.fillStyle = trim;
+      ctx.fillRect(p.x - 16 * k, p.y - 3 * k + bob, 32 * k, 4 * k);
+      ctx.fillRect(p.x - 3 * k, p.y - 6 * k + bob, 6 * k, 10 * k);
+      ctx.strokeStyle = trim;
       ctx.lineWidth = 2;
-      ctx.strokeRect(p.x - 16, p.y - 10 + bob, 32, 22);
+      ctx.strokeRect(p.x - 16 * k, p.y - 10 * k + bob, 32 * k, 22 * k);
     } else if (p.type === 'pill') {
       const remaining = p.life - p.age;
       if (remaining < 240 && Math.floor(remaining / 8) % 2 === 0) continue;
@@ -1044,7 +1048,7 @@ function drawIndicators() {
   const targets = [];
   for (const e of enemies) if (e.boss || e.elite) targets.push({ x: e.x, y: e.y, color: e.boss ? e.def.color : '#ffe14d' });
   for (const p of pickups) {
-    if (p.type === 'chest') targets.push({ x: p.x, y: p.y, color: '#ffd23d' });
+    if (p.type === 'chest') targets.push({ x: p.x, y: p.y, color: p.tier === 'small' ? '#9fd8ff' : '#ffd23d' });
     if (p.type === 'pill') targets.push({ x: p.x, y: p.y, color: p.def.color });
   }
   const margin = 26;

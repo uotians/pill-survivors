@@ -207,7 +207,7 @@ const Save = {
       wins: 0,
       settings: { mouseAim: true, autoTarget: false, sound: true, music: true, shake: true },
       // Encyclopedia: id -> times found/killed. Presence == discovered.
-      codex: { weapon: {}, evolution: {}, passive: {}, pill: {}, enemy: {} },
+      codex: { weapon: {}, evolution: {}, passive: {}, gear: {}, pill: {}, enemy: {} },
       codexSeen: {},
       achievements: {},   // id -> unlock timestamp
       shopUnlocked: {},   // pharmacy items unlocked by achievements
@@ -237,6 +237,7 @@ const Save = {
     this.data.codex = {
       weapon: Object.assign({}, codex.weapon),
       passive: Object.assign({}, codex.passive),
+      gear: Object.assign({}, codex.gear),
       pill: Object.assign({}, codex.pill),
       enemy: Object.assign({}, codex.enemy),
       evolution: Object.assign({}, codex.evolution)

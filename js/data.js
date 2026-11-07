@@ -6,7 +6,7 @@
    ========================================================================= */
 
 // Shown on the main menu. Bump on every release.
-const GAME_VERSION = '1.1.0';
+const GAME_VERSION = '1.2.0';
 
 const lv = (arr, L) => arr[clamp(L, 1, arr.length) - 1];
 
@@ -550,6 +550,47 @@ const EVENTS = [
   { t: 560, type: 'swarm' },
   { t: 575, type: 'elite' },
   { t: RUN_SECONDS, type: 'final' }
+];
+
+// ---------------------------------------------------------------- Gear --
+// Found in chests: small chests (elites) hold common gear, big chests (mini-
+// bosses) hold rare gear. One item per slot; a new one replaces the old.
+// Unlike prescriptions, gear has NO side effects.
+const GEAR_SLOTS = [
+  { id: 'head',   name: 'Head' },
+  { id: 'body',   name: 'Body' },
+  { id: 'hands',  name: 'Hands' },
+  { id: 'pocket', name: 'Pocket' }
+];
+const GEAR = [
+  // common
+  { id: 'mask',       name: 'Surgical Mask',     slot: 'head',   rarity: 'common', color: '#7ad7ff', desc: '+1 Armor',                         apply(s) { s.armor += 1; } },
+  { id: 'headmirror', name: 'Head Mirror',       slot: 'head',   rarity: 'common', color: '#c8d2f0', desc: '+10% Area',                        apply(s) { s.area += 0.10; } },
+  { id: 'labcoat',    name: 'Lab Coat',          slot: 'body',   rarity: 'common', color: '#f4efe0', desc: '+20 Max HP',                       apply(s) { s.maxHp += 20; } },
+  { id: 'scrubs',     name: 'Scrubs',            slot: 'body',   rarity: 'common', color: '#3dd6c6', desc: '+7% Move Speed',                   apply(s) { s.speed *= 1.07; } },
+  { id: 'gloves',     name: 'Rubber Gloves',     slot: 'hands',  rarity: 'common', color: '#5ec8ff', desc: '+8% Might',                        apply(s) { s.might += 0.08; } },
+  { id: 'wristwatch', name: 'Wristwatch',        slot: 'hands',  rarity: 'common', color: '#ffd06b', desc: '-6% Cooldowns',                    apply(s) { s.cooldown *= 0.94; } },
+  { id: 'stethoscope', name: 'Stethoscope',      slot: 'pocket', rarity: 'common', color: '#8a93b8', desc: '+5% Crit chance',                  apply(s) { s.crit += 0.05; } },
+  { id: 'penlight',   name: 'Penlight',          slot: 'pocket', rarity: 'common', color: '#ffe14d', desc: '+30% Pickup Radius',               apply(s) { s.magnet *= 1.3; } },
+  { id: 'pager',      name: 'Pager',             slot: 'pocket', rarity: 'common', color: '#9dff3d', desc: '+10% XP gain',                     apply(s) { s.growth += 0.10; } },
+  // rare
+  { id: 'hazmathood', name: 'Hazmat Hood',       slot: 'head',   rarity: 'rare',   color: '#ffd23d', desc: '+2 Armor, -10% damage taken',      apply(s) { s.armor += 2; s.dmgTaken *= 0.9; } },
+  { id: 'loupe',      name: 'Surgical Loupe',    slot: 'head',   rarity: 'rare',   color: '#b8a4ff', desc: '+18% Area, +6% Crit chance',       apply(s) { s.area += 0.18; s.crit += 0.06; } },
+  { id: 'hazmatsuit', name: 'Hazmat Suit',       slot: 'body',   rarity: 'rare',   color: '#ffb13d', desc: '+40 Max HP, +0.5 HP/s Regen',      apply(s) { s.maxHp += 40; s.regen += 0.5; } },
+  { id: 'leadapron',  name: 'Lead Apron',        slot: 'body',   rarity: 'rare',   color: '#a7aed0', desc: '+3 Armor, +15 Max HP',             apply(s) { s.armor += 3; s.maxHp += 15; } },
+  { id: 'robotarm',   name: 'Robotic Arm',       slot: 'hands',  rarity: 'rare',   color: '#7af0ff', desc: '+1 Projectile, +8% Might',         apply(s) { s.amount += 1; s.might += 0.08; } },
+  { id: 'paddles',    name: 'Defib Paddles',     slot: 'hands',  rarity: 'rare',   color: '#ff5d6c', desc: '+15% Might, +25% vs bosses/elites', apply(s) { s.might += 0.15; s.bossDmg += 0.25; } },
+  { id: 'goldpager',  name: 'Golden Pager',      slot: 'pocket', rarity: 'rare',   color: '#ffd23d', desc: '-12% Cooldowns, +10% XP gain',     apply(s) { s.cooldown *= 0.88; s.growth += 0.10; } },
+  { id: 'cartkey',    name: 'Crash Cart Key',    slot: 'pocket', rarity: 'rare',   color: '#ff4d5e', desc: 'Revive once (if unused)',          revive: true, apply() {} }
+];
+const GEAR_BY_ID = Object.fromEntries(GEAR.map((g) => [g.id, g]));
+
+// Small-chest consumables.
+const SUPPLIES = [
+  { id: 'medkit',  name: 'Med Kit',          color: '#3dff8a', desc: 'Heal to full HP' },
+  { id: 'reroll',  name: 'Second Opinion',   color: '#5ec8ff', desc: '+1 Reroll' },
+  { id: 'banish',  name: 'Contraindication', color: '#ff5d6c', desc: '+1 Banish' },
+  { id: 'goldbag', name: 'Gold Bag',         color: '#ffd23d', desc: '+40 gold' }
 ];
 
 // ------------------------------------------------------ Pharmacy (meta) --

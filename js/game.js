@@ -103,6 +103,8 @@ function startRun(charId, stageId) {
     rerolls: 0,
     banishes: 0,
     banished: [],    // banishKey()s never offered again this run
+    chestTier: 'big', // tier of the chest being opened ('small' | 'big')
+    cartKeyUsed: false,
     finalSpawned: false,
     victory: false,
     endTimer: 0,
@@ -134,6 +136,8 @@ function startRun(charId, stageId) {
     weapons: [],
     passives: {},
     passiveOrder: [],
+    gear: {},        // slot -> gear id
+    cured: [],       // prescription ids whose side effect an Antidote removed
     tempEffects: [],
     trail: [],
     fireDropTimer: 0,
@@ -166,7 +170,8 @@ function recomputeStats() {
     const L = Save.data.shop[item.id] || 0;
     if (L > 0) item.apply(s, L);
   }
-  for (const id of player.passiveOrder) PASSIVE_BY_ID[id].apply(s, player.passives[id], s.sideMult);
+  for (const slot in player.gear) GEAR_BY_ID[player.gear[slot]].apply(s);
+  for (const id of player.passiveOrder) PASSIVE_BY_ID[id].apply(s, player.passives[id], player.cured.includes(id) ? 0 : s.sideMult);
   for (const w of player.weapons) if (w.def.applySide) w.def.applySide(s, s.sideMult || 1);
   for (const eff of player.tempEffects) eff.def.onTick(s);
   if (game.latched) s.speed *= Math.max(0.6, 1 - 0.08 * game.latched);
@@ -262,12 +267,61 @@ function choicePool() {
   return pool;
 }
 
+// --------------------------------------------------------------- Chests --
+// Small chest (elites): common gear + supplies. Big chest (mini-bosses):
+// rare gear, an Antidote for one prescription, and an evolution when ready.
+function gearOptions(rarity) {
+  return GEAR.filter((g) => g.rarity === rarity && player.gear[g.slot] !== g.id &&
+    !(g.revive && game.cartKeyUsed));
+}
+
+function buildChestChoices(tier) {
+  const picks = [];
+  const used = new Set();
+  const add = (c) => { if (c && !used.has(c.kind + ':' + c.def.id)) { used.add(c.kind + ':' + c.def.id); picks.push(c); return true; } return false; };
+  const gear = (rarity) => {
+    const opts = gearOptions(rarity).filter((g) => !used.has('gear:' + g.id));
+    return opts.length ? { kind: 'gear', def: choice(opts) } : null;
+  };
+  const supply = () => {
+    const opts = SUPPLIES.filter((x) => !used.has('supply:' + x.id));
+    return { kind: 'supply', def: choice(opts) };
+  };
+  if (tier === 'small') {
+    add(gear('common'));
+    add(supply());
+    add(Math.random() < 0.5 ? gear('common') : supply()) || add(supply());
+  } else {
+    const evo = eligibleEvolutions();
+    if (evo.length) add({ kind: 'evolution', def: choice(evo), level: 1 });
+    const curable = player.passiveOrder.filter((id) => !player.cured.includes(id));
+    if (curable.length) add({ kind: 'antidote', def: PASSIVE_BY_ID[choice(curable)] });
+    while (picks.length < 3 && add(gear('rare')));
+    while (picks.length < 3 && add(gear('common')));
+    while (picks.length < 3) add(supply());
+  }
+  if (picks[0] && picks[0].kind === 'evolution') return picks; // evolution stays first
+  for (let i = picks.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [picks[i], picks[j]] = [picks[j], picks[i]];
+  }
+  return picks;
+}
+
+function equipGear(def) {
+  const old = player.gear[def.slot];
+  player.gear[def.slot] = def.id;
+  if (def.revive && !game.cartKeyUsed) { game.cartKeyUsed = true; game.revives++; }
+  discover('gear', def.id);
+  return old ? GEAR_BY_ID[old] : null;
+}
+
 function buildChoices() {
+  if (game.levelUpSource === 'chest') return buildChestChoices(game.chestTier);
   const pool = choicePool();
   const count = stats.choices + (Math.random() < (stats.luck - 1) * 0.6 ? 1 : 0);
   const picks = [];
   const evos = eligibleEvolutions().map((def) => ({ kind: 'evolution', def, level: 1, weight: 5 }));
-  if (evos.length && game.levelUpSource === 'chest') picks.push(evos.shift()); // chests always evolve
   pool.push(...evos);
   const take = (from) => {
     const it = weightedPick(from);
@@ -282,11 +336,9 @@ function buildChoices() {
   if (picks.length < count && weaponOpts.length && !picks.some(isWeapon)) take(weaponOpts);
   if (picks.length < count && passiveOpts.length) take(passiveOpts);
   while (picks.length < count && pool.length) take(pool);
-  // Shuffle so the guaranteed picks are not always in the same slot
-  // (a chest's guaranteed evolution stays first).
-  const fixed = game.levelUpSource === 'chest' && picks[0] && picks[0].kind === 'evolution' ? 1 : 0;
-  for (let i = picks.length - 1; i > fixed; i--) {
-    const j = fixed + Math.floor(Math.random() * (i + 1 - fixed));
+  // Shuffle so the guaranteed picks are not always in the same slot.
+  for (let i = picks.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
     [picks[i], picks[j]] = [picks[j], picks[i]];
   }
   if (!picks.length) {
@@ -307,6 +359,16 @@ function applyChoice(c) {
     discover('passive', c.def.id);
   } else if (c.kind === 'evolution') {
     evolveWeapon(c.def);
+  } else if (c.kind === 'gear') {
+    equipGear(c.def);
+  } else if (c.kind === 'antidote') {
+    if (!player.cured.includes(c.def.id)) player.cured.push(c.def.id);
+  } else if (c.kind === 'supply') {
+    const id = c.def.id;
+    if (id === 'medkit') player.hp = stats.maxHp;
+    else if (id === 'reroll') game.rerolls++;
+    else if (id === 'banish') game.banishes++;
+    else if (id === 'goldbag') game.gold += Math.round(40 * stats.greed * game.stage.goldMult);
   } else if (c.kind === 'gold') {
     game.gold += c.amount;
   } else if (c.kind === 'heal') {
@@ -1244,10 +1306,11 @@ function killEnemy(e, noDrops = false) {
 
   if (e.elite) {
     spawnPickup('pill', e.x, e.y, { def: choice(TEMP_PILLS) });
+    spawnPickup('chest', e.x + 26, e.y, { tier: 'small' });
     for (let i = 0; i < 3; i++) spawnPickup('gold', e.x + rand(-20, 20), e.y + rand(-20, 20), { value: 5 });
   }
   if (e.boss && !e.def.final) {
-    spawnPickup('chest', e.x, e.y);
+    spawnPickup('chest', e.x, e.y, { tier: 'big' });
     for (let i = 0; i < 6; i++) spawnPickup('gold', e.x + rand(-40, 40), e.y + rand(-40, 40), { value: 10 });
     setBanner(`${e.def.name} ERADICATED`, 'grab the care package!', 140);
     Achievements.check('bossKill');
@@ -1499,7 +1562,7 @@ function spawnGem(x, y, value) {
 
 function spawnPickup(type, x, y, opts = {}) {
   ({ x, y } = World.freeSpot(x, y, 20));
-  pickups.push({ type, x, y, value: opts.value || 0, def: opts.def || null, life: type === 'pill' ? 1500 : Infinity, age: 0, mag: false, spd: 0 });
+  pickups.push({ type, x, y, value: opts.value || 0, def: opts.def || null, tier: opts.tier || null, life: type === 'pill' ? 1500 : Infinity, age: 0, mag: false, spd: 0 });
 }
 
 function updateGems() {
@@ -1562,8 +1625,10 @@ function collectPickup(p) {
     addFloater(player.x, player.y - 30, 'VACUUM!', '#5ec8ff', 20);
     Sfx.pickup();
   } else if (p.type === 'chest') {
-    game.gold += Math.round(randInt(25, 50) * stats.greed * game.stage.goldMult);
-    spawnParticles(p.x, p.y, 40, '#ffe14d', 6, 40, 4);
+    const big = p.tier !== 'small';
+    game.gold += Math.round((big ? randInt(25, 50) : randInt(8, 16)) * stats.greed * game.stage.goldMult);
+    spawnParticles(p.x, p.y, big ? 40 : 20, big ? '#ffe14d' : '#9fd8ff', 6, 40, 4);
+    game.chestTier = big ? 'big' : 'small';
     openLevelUp('chest');
   } else if (p.type === 'pill') {
     applyTempPill(p.def);

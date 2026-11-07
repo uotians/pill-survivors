@@ -129,6 +129,28 @@ html, body {
   flex: 0 0 auto;
 }
 
+/* Gear */
+.gear-icon {
+  display: inline-block; width: 11px; height: 11px; flex: 0 0 auto;
+  background: var(--c); border: 2px solid rgba(255, 255, 255, 0.7);
+  transform: rotate(45deg); box-shadow: 0 0 6px var(--c);
+}
+.slot.gear { border-radius: 2px; }
+.slot.gear.rare { box-shadow: 0 0 8px rgba(255, 210, 61, 0.55); }
+.slot.passive.cured { box-shadow: 0 0 0 2px #3dff8a; }
+.rarity { font-size: 10px; letter-spacing: 1px; font-weight: bold; text-transform: uppercase; }
+.rarity.common { color: #9fd8ff; }
+.rarity.rare { color: #ffd23d; }
+.card .no-side { color: #5a6286; font-size: 11px; margin-top: 2px; }
+.card .replaces { color: #a7aed0; font-size: 11px; margin-top: 8px; padding-top: 6px; border-top: 1px solid #252a44; }
+.card .side.cured { text-decoration: line-through; opacity: 0.7; margin-top: 6px; }
+.build-row .mini.cured { color: #3dff8a; }
+#levelUpScreen.small-chest h2 { color: #9fd8ff; }
+
+.gear-icon.big { width: 22px; height: 22px; margin: 6px; }
+.gear-icon.huge { width: 40px; height: 40px; margin: 12px; border-width: 3px; }
+.codex-tile.locked .gear-icon, .gear-icon.huge.locked { filter: brightness(0) drop-shadow(0 0 1px #3a4066); box-shadow: none; }
+
 /* Temporary pill badges */
 #effects { display: flex; flex-direction: column; gap: 5px; margin-top: 4px; }
 .badge {
@@ -393,6 +415,17 @@ kbd {
 
 /* Level-up: reroll / banish */
 .lu-actions { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+.card-wrap { display: flex; flex-direction: column; gap: 6px; animation: cardIn 0.28s ease-out both; }
+.card-wrap .card { flex: 1; animation: none; }
+.card-banish {
+  font-family: inherit; font-size: 11px; letter-spacing: 1px; cursor: pointer;
+  color: #ff8a9a; background: rgba(40, 12, 20, 0.85);
+  border: 1px solid #5a2030; border-radius: 6px; padding: 5px 8px;
+  transition: background 0.1s, border-color 0.1s, color 0.1s;
+}
+.card-banish small { color: #a7aed0; font-size: 10px; }
+.card-banish:hover { background: rgba(120, 20, 40, 0.9); border-color: #ff4d5e; color: #fff; }
+.card-banish.off { visibility: hidden; pointer-events: none; }
 .lu-banished { font-size: 12px; min-height: 1em; margin: 0 0 8px; }
 #levelUpScreen.banishing #luSub { color: #ff5d6c; }
 #levelUpScreen.banishing .card:not(.no-banish) { border-color: #ff4d5e; box-shadow: 0 0 14px rgba(255, 77, 94, 0.35); }
