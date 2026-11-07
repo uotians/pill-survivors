@@ -256,10 +256,25 @@ function buildChoices() {
   const evos = eligibleEvolutions().map((def) => ({ kind: 'evolution', def, level: 1, weight: 5 }));
   if (evos.length && game.levelUpSource === 'chest') picks.push(evos.shift()); // chests always evolve
   pool.push(...evos);
-  while (picks.length < count && pool.length) {
-    const it = weightedPick(pool);
+  const take = (from) => {
+    const it = weightedPick(from);
     picks.push(it);
     pool.splice(pool.indexOf(it), 1);
+  };
+  // Always offer at least one weapon (new, upgrade or evolution) and one
+  // prescription when any are available, then fill the rest at random.
+  const isWeapon = (c) => c.kind === 'weapon' || c.kind === 'evolution';
+  const weaponOpts = pool.filter(isWeapon);
+  const passiveOpts = pool.filter((c) => c.kind === 'passive');
+  if (picks.length < count && weaponOpts.length && !picks.some(isWeapon)) take(weaponOpts);
+  if (picks.length < count && passiveOpts.length) take(passiveOpts);
+  while (picks.length < count && pool.length) take(pool);
+  // Shuffle so the guaranteed picks are not always in the same slot
+  // (a chest's guaranteed evolution stays first).
+  const fixed = game.levelUpSource === 'chest' && picks[0] && picks[0].kind === 'evolution' ? 1 : 0;
+  for (let i = picks.length - 1; i > fixed; i--) {
+    const j = fixed + Math.floor(Math.random() * (i + 1 - fixed));
+    [picks[i], picks[j]] = [picks[j], picks[i]];
   }
   if (!picks.length) {
     picks.push({ kind: 'gold', amount: 25 });

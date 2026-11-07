@@ -4,6 +4,44 @@
 
 module.exports = [
   {
+    name: 'level-up offers both kinds even with full slots (upgrades only)',
+    fn(t) {
+      const g = t.game({ seed: 5 });
+      const r = g.run(() => {
+        startRun('nurse');
+        for (const def of WEAPONS) if (player.weapons.length < MAX_WEAPON_SLOTS && !getWeapon(def.id)) addWeapon(def.id);
+        for (const def of PASSIVES.slice(0, MAX_PASSIVE_SLOTS)) applyChoice({ kind: 'passive', def, level: 1 });
+        let bad = 0;
+        for (let i = 0; i < 300; i++) {
+          const c = buildChoices();
+          if (!c.some((x) => x.kind === 'weapon') || !c.some((x) => x.kind === 'passive')) bad++;
+        }
+        // max every weapon: only prescriptions remain, and that is still a valid roll
+        for (const w of player.weapons) w.level = w.def.max;
+        const onlyP = buildChoices();
+        return { bad, onlyP: onlyP.length > 0 && onlyP.every((x) => x.kind === 'passive' || x.kind === 'evolution') };
+      });
+      t.eq(r.bad, 0, 'full slots: every roll has a weapon upgrade and a prescription upgrade');
+      t.ok(r.onlyP, 'weapons maxed: still offers prescriptions');
+    }
+  },
+  {
+    name: 'level-up guarantees both kinds while both pools have options',
+    fn(t) {
+      const g = t.game({ seed: 4 });
+      const r = g.run(() => {
+        startRun('nurse');
+        let bad = 0;
+        for (let i = 0; i < 500; i++) {
+          const c = buildChoices();
+          if (!c.some((x) => x.kind === 'weapon') || !c.some((x) => x.kind === 'passive')) bad++;
+        }
+        return bad;
+      });
+      t.eq(r, 0, 'fresh run: every roll has a weapon and a prescription');
+    }
+  },
+  {
     name: 'achievements unlock content and gold',
     fn(t) {
       const g = t.game();

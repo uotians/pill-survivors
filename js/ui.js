@@ -90,6 +90,7 @@ const UI = {
     $('hud').classList.add('hidden');
     $('menuScreen').classList.remove('hidden');
     $('menuGold').textContent = Save.data.gold;
+    $('menuVersion').textContent = 'v' + GAME_VERSION;
     const b = Save.data.best;
     $('menuBest').textContent = Save.data.runs
       ? `Best: ${fmtTime(b.time * 60)} survived · ${b.kills} kills · LV ${b.level} · ${Save.data.wins} cure${Save.data.wins === 1 ? '' : 's'}`
@@ -565,7 +566,10 @@ const UI = {
       return `<div class="card-top" style="--c:${ev.color};--a:${ev.accent}"><span class="pill-icon"></span>` +
         `<span class="card-name">${ev.name}</span><span class="card-lv"><span class="new">EVOLUTION</span></span></div>` +
         `<div class="card-kind">${WEAPON_BY_ID[ev.from].name} + ${PASSIVE_BY_ID[ev.requires].name}</div>` +
-        `<div class="card-desc">${ev.desc}</div><div class="side">&#9660; ${ev.side}</div><div class="key">[${i + 1}]</div>`;
+        this.weaponTagsHtml(ev) +
+        `<div class="card-desc">${ev.desc}</div>` +
+        this.weaponStatsHtml(ev, 1, this.currentWeaponFor(ev.from)) +
+        `<div class="side">&#9660; ${ev.side}</div><div class="key">[${i + 1}]</div>`;
     }
     const def = c.def;
     const isWeapon = c.kind === 'weapon';
@@ -574,7 +578,8 @@ const UI = {
     let body;
     if (isWeapon) {
       const desc = def.levelText[c.level - 1];
-      body = `<div class="card-desc">${desc}</div>`;
+      const prev = c.level > 1 ? { def, level: c.level - 1 } : null;
+      body = this.weaponTagsHtml(def) + `<div class="card-desc">${desc}</div>` + this.weaponStatsHtml(def, c.level, prev);
     } else {
       body =
         `<div class="buff">▲ ${def.buff}</div>` +
@@ -585,6 +590,54 @@ const UI = {
       `<span class="card-name">${def.name}</span><span class="card-lv">${lvLabel}</span></div>` +
       `<div class="card-kind">${isWeapon ? 'WEAPON' : 'PRESCRIPTION'}</div>` +
       body + `<div class="key">[${i + 1}]</div>`;
+  },
+
+  // ------------------------------------------------ Weapon details --
+  currentWeaponFor(id) {
+    const w = player.weapons.find((x) => x.id === id || x.def.from === id);
+    return w ? { def: w.def, level: w.level } : null;
+  },
+
+  weaponTagsHtml(def) {
+    const info = WEAPON_INFO[def.family] || { tags: [], aim: '' };
+    return '<div class="wtags">' + info.tags.map((t) => `<span class="wtag">${t}</span>`).join('') + '</div>' +
+      (info.aim ? `<div class="waim">&#8982; ${info.aim}</div>` : '');
+  },
+
+  // Effective numbers for one weapon level, including the player's current stats.
+  weaponStatRows(def, level) {
+    const b = def.base(level);
+    const ws = weaponStats({ def, level });
+    const fam = def.family;
+    const sec = (f) => (f / 60).toFixed(f < 60 ? 2 : 1) + ' s';
+    const num = (v) => (v < 10 ? Math.round(v * 10) / 10 : Math.round(v));
+    const countName = { pistol: 'Capsules', scalpel: 'Scalpels', saw: 'Saws', orbit: 'Pills', zap: 'Strikes',
+      flask: 'Flasks', syringe: 'Needles', whip: 'Directions' }[fam] || 'Amount';
+    const rows = [['Damage', num(ws.dmg)]];
+    if (b.amount !== undefined) rows.push([countName, ws.amount]);
+    if (b.tick) rows.push(['Hits every', sec(ws.tick)]);
+    if (b.cd > 1) rows.push(['Cooldown', sec(ws.cd)]);
+    if (b.pierce !== undefined) rows.push(['Pierce', b.pierce >= 999 ? '∞' : ws.pierce]);
+    if (b.chains) rows.push(['Chains', ws.chains]);
+    if (b.range) rows.push(['Chain range', Math.round(ws.range) + ' px']);
+    if (b.radius) rows.push([fam === 'orbit' ? 'Orbit radius' : fam === 'flask' ? 'Pool radius' : 'Radius', Math.round(ws.radius) + ' px']);
+    if (b.length) rows.push(['Length', Math.round(b.length * stats.area) + ' px']);
+    if (b.dur) rows.push([fam === 'flask' ? 'Pool lasts' : 'Duration', b.dur >= 1e8 ? 'Permanent' : sec(ws.dur)]);
+    if (b.turn) rows.push(['Homing', Math.round(b.turn * 100) / 100]);
+    if (b.knock) rows.push(['Knockback', b.knock]);
+    return rows;
+  },
+
+  // Stat table; with `prev` ({def, level}) changed values show as "old → new".
+  weaponStatsHtml(def, level, prev) {
+    const rows = this.weaponStatRows(def, level);
+    const old = prev ? Object.fromEntries(this.weaponStatRows(prev.def, prev.level)) : null;
+    return '<div class="wstats">' + rows.map(([k, v]) => {
+      const o = old ? old[k] : undefined;
+      const changed = old && o !== v;
+      const val = changed ? `<span class="was">${o === undefined ? '—' : o}</span> &rarr; <b class="up">${v}</b>` : `<b>${v}</b>`;
+      return `<div><span>${k}</span>${val}</div>`;
+    }).join('') + '</div>';
   },
 
   pick(i) {
@@ -600,7 +653,78 @@ const UI = {
     if (game.state !== State.PLAYING) return;
     game.state = State.PAUSED;
     $('pauseScreen').classList.remove('hidden');
-    $('pauseBuild').innerHTML = this.buildHtml();
+    $('pauseBuild').innerHTML = this.pauseHtml();
+  },
+
+  pauseHtml() {
+    const fmtPct = (v) => (v >= 0 ? '+' : '') + Math.round(v * 100) + '%';
+    const run = [
+      ['Stage', `<span style="color:${game.stage.color}">${game.stage.name}</span>`],
+      ['Character', game.char.name],
+      ['Time', fmtTime(game.time)],
+      ['Level', `${game.level} <span class="muted">(${Math.floor(game.xp)}/${Math.ceil(game.xpNext)} XP)</span>`],
+      ['Kills', game.kills],
+      ['Gold', game.gold],
+      ['Damage dealt', Math.round(game.damageDealt).toLocaleString()],
+      ['Damage taken', Math.round(game.damageTaken || 0).toLocaleString()],
+      ['Rerolls', game.rerolls],
+      ['Revives', game.revives]
+    ];
+    let html = '<div class="pause-run">' + run.map(([k, v]) => `<div><span class="label">${k}</span><span>${v}</span></div>`).join('') + '</div>';
+
+    // Weapons with live numbers and damage share.
+    const total = Object.values(game.damageBy).reduce((a, b) => a + b, 0) || 1;
+    html += '<div class="pause-cols"><div class="build-col"><h3>Weapons</h3>';
+    for (const w of player.weapons) {
+      const dealt = game.damageBy[w.def.family] || 0;
+      html += `<div class="build-row wrow" style="--c:${w.def.color}"><span class="dot"></span>${w.def.name} <b>${w.def.evo ? 'EVOLVED' : 'LV ' + w.level + '/' + w.def.max}</b>` +
+        `<span class="dealt">${Math.round(dealt).toLocaleString()} dmg · ${Math.round((dealt / total) * 100)}%</span>` +
+        this.weaponTagsHtml(w.def) + this.weaponStatsHtml(w.def, w.level) + '</div>';
+    }
+    html += `<div class="muted slots-left">Weapon slots: ${player.weapons.length}/${MAX_WEAPON_SLOTS}</div>`;
+    html += '</div><div class="build-col"><h3>Prescriptions</h3>';
+    if (!player.passiveOrder.length) html += '<div class="muted">none yet</div>';
+    for (const id of player.passiveOrder) {
+      const def = PASSIVE_BY_ID[id];
+      const L = player.passives[id];
+      html += `<div class="build-row" style="--c:${def.color}"><span class="dot"></span>${def.name} <b>LV ${L}/${def.max}</b>` +
+        `<div class="mini buff">▲ ${def.buff} ×${L}</div><div class="mini side">▼ ${def.side} ×${L * stats.sideMult}</div></div>`;
+    }
+    html += `<div class="muted slots-left">Prescription slots: ${player.passiveOrder.length}/${MAX_PASSIVE_SLOTS}</div>`;
+    const pills = player.tempEffects;
+    if (pills.length) {
+      html += '<h3>Active pills</h3>';
+      for (const e of pills) {
+        html += `<div class="build-row" style="--c:${e.def.color}"><span class="dot"></span>${e.def.name} <b>${Math.ceil(e.duration / 60)} s</b>` +
+          `<div class="mini buff">▲ ${e.def.buffDesc}</div><div class="mini side">▼ ${e.def.sideEffectDesc}</div></div>`;
+      }
+    }
+    html += '</div></div>';
+
+    // Current character stats (after every prescription, pill and upgrade).
+    const st = [
+      ['Max HP', `${Math.ceil(player.hp)}/${Math.round(stats.maxHp)}`],
+      ['Regen', `${Math.round(stats.regen * 10) / 10} HP/s`],
+      ['Armor', stats.armor],
+      ['Incoming damage', fmtPct(stats.dmgTaken - 1)],
+      ['Move speed', fmtPct(stats.speed / BASE_STATS.speed - 1)],
+      ['Might', fmtPct(stats.might - 1)],
+      ['Area', fmtPct(stats.area - 1)],
+      ['Cooldown', fmtPct(stats.cooldown - 1)],
+      ['Extra projectiles', '+' + stats.amount],
+      ['Duration', fmtPct(stats.duration - 1)],
+      ['Projectile speed', fmtPct(stats.projSpeed - 1)],
+      ['Crit chance', Math.round((0.04 * stats.luck + stats.crit) * 100) + '%'],
+      ['Vs bosses/elites', fmtPct(stats.bossDmg - 1)],
+      ['Pickup radius', Math.round(stats.magnet) + ' px'],
+      ['XP gain', fmtPct(stats.growth - 1)],
+      ['Luck', fmtPct(stats.luck - 1)],
+      ['Gold gain', fmtPct(stats.greed - 1)],
+      ['Enemy count', fmtPct(stats.curse - 1)]
+    ];
+    html += '<h3 class="pause-h">Stats</h3><div class="pause-stats">' +
+      st.map(([k, v]) => `<div><span>${k}</span><b>${v}</b></div>`).join('') + '</div>';
+    return html;
   },
 
   resume() {
