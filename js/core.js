@@ -190,6 +190,8 @@ const Sfx = {
 // ----------------------------------------------------------- Input state --
 const keys = {};
 const mouse = { x: 0, y: 0, active: false }; // screen-space cursor
+// Virtual joystick for touch screens: x/y in -1..1 (analog), set by ui.js.
+const touchStick = { active: false, id: null, ox: 0, oy: 0, x: 0, y: 0 };
 
 // ------------------------------------------------------------- Save data --
 const Save = {

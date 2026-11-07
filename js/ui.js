@@ -68,6 +68,7 @@ const UI = {
     $('resetBtn').onclick = () => this.resetProgress();
     $('rerollBtn').onclick = () => { this.banishMode = false; rerollChoices(); };
     $('resumeBtn').onclick = () => this.resume();
+    $('hudPauseBtn').onclick = () => this.pause();
     $('quitBtn').onclick = () => this.openMenu();
     $('retryBtn').onclick = () => startRun(this.selectedChar, this.selectedStage);
     $('menuBtn').onclick = () => this.openMenu();
@@ -672,7 +673,7 @@ const UI = {
     const fam = def.family;
     const sec = (f) => (f / 60).toFixed(f < 60 ? 2 : 1) + ' s';
     const num = (v) => (v < 10 ? Math.round(v * 10) / 10 : Math.round(v));
-    const countName = { pistol: 'Capsules', scalpel: 'Scalpels', saw: 'Saws', orbit: 'Pills', zap: 'Strikes',
+    const countName = { pistol: 'Capsules', scalpel: 'Scalpels', saw: 'Saws', orbit: 'Pills', zap: 'Strikes', rifle: 'Darts',
       flask: 'Flasks', syringe: 'Needles', whip: 'Directions' }[fam] || 'Amount';
     const rows = [['Damage', num(ws.dmg)]];
     if (b.amount !== undefined) rows.push([countName, ws.amount]);
@@ -680,7 +681,9 @@ const UI = {
     if (b.cd > 1) rows.push(['Cooldown', sec(ws.cd)]);
     if (b.pierce !== undefined) rows.push(['Pierce', b.pierce >= 999 ? '∞' : ws.pierce]);
     if (b.chains) rows.push(['Chains', ws.chains]);
-    if (b.range) rows.push(['Chain range', Math.round(ws.range) + ' px']);
+    if (b.range) rows.push([fam === 'zap' ? 'Chain range' : 'Range', Math.round(ws.range) + ' px']);
+    if (b.stun) rows.push(['Stun', sec(b.stun)]);
+    if (PRECISION_FAMILIES.includes(fam)) rows.push(['Vs elites/bosses', '×' + PRECISION_MULT]);
     if (b.radius) rows.push([fam === 'orbit' ? 'Orbit radius' : fam === 'flask' ? 'Pool radius' : 'Radius', Math.round(ws.radius) + ' px']);
     if (b.length) rows.push(['Length', Math.round(b.length * stats.area) + ' px']);
     if (b.dur) rows.push([fam === 'flask' ? 'Pool lasts' : 'Duration', b.dur >= 1e8 ? 'Permanent' : sec(ws.dur)]);
@@ -1059,9 +1062,59 @@ window.addEventListener('mousemove', (e) => {
   mouse.active = true;
 });
 
+// ------------------------------------------------------ Touch controls --
+// A floating joystick: put a thumb down anywhere on the game and drag.
+const JOY_RADIUS = 56;
+let touchAimSwitched = false;
+
+function resetStick() {
+  touchStick.active = false;
+  touchStick.id = null;
+  touchStick.x = touchStick.y = 0;
+  $('joyBase').classList.add('hidden');
+}
+
+window.addEventListener('pointerdown', (e) => {
+  if (e.pointerType === 'mouse') return;
+  // Mouse aim is useless without a mouse: switch to auto-target once.
+  if (!touchAimSwitched) {
+    touchAimSwitched = true;
+    const s = settings();
+    if (s.mouseAim || !s.autoTarget) { s.mouseAim = false; s.autoTarget = true; Save.save(); }
+  }
+  if (e.target !== $('game') || game.state !== State.PLAYING || touchStick.active) return;
+  e.preventDefault();
+  Object.assign(touchStick, { active: true, id: e.pointerId, ox: e.clientX, oy: e.clientY, x: 0, y: 0 });
+  const base = $('joyBase');
+  base.style.left = e.clientX + 'px';
+  base.style.top = e.clientY + 'px';
+  $('joyKnob').style.transform = 'translate(-50%, -50%)';
+  base.classList.remove('hidden');
+}, { passive: false });
+
+window.addEventListener('pointermove', (e) => {
+  if (!touchStick.active || e.pointerId !== touchStick.id) return;
+  e.preventDefault();
+  let dx = e.clientX - touchStick.ox;
+  let dy = e.clientY - touchStick.oy;
+  const d = Math.hypot(dx, dy);
+  if (d > JOY_RADIUS) { dx *= JOY_RADIUS / d; dy *= JOY_RADIUS / d; }
+  const k = Math.min(1, d / JOY_RADIUS);
+  const dead = 0.15;
+  const mag = k < dead ? 0 : (k - dead) / (1 - dead);
+  touchStick.x = d ? (dx / Math.min(d, JOY_RADIUS)) * mag : 0;
+  touchStick.y = d ? (dy / Math.min(d, JOY_RADIUS)) * mag : 0;
+  $('joyKnob').style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`;
+}, { passive: false });
+
+for (const ev of ['pointerup', 'pointercancel']) {
+  window.addEventListener(ev, (e) => { if (e.pointerId === touchStick.id) resetStick(); });
+}
+
 window.addEventListener('pagehide', () => Save.save());
 
 window.addEventListener('blur', () => {
   for (const k in keys) keys[k] = false;
+  resetStick();
   if (game.state === State.PLAYING) UI.pause();
 });
