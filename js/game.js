@@ -525,6 +525,7 @@ function updatePlayer() {
     ix /= len;
     iy /= len;
   }
+  if (touchStick.active && (touchStick.x || touchStick.y)) { ix = touchStick.x; iy = touchStick.y; } // analog, |v| <= 1
   if (stats.inverted) { ix = -ix; iy = -iy; }
 
   // Melatonin: periodic naps where you can't move.

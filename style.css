@@ -10,7 +10,9 @@ html, body {
   user-select: none;
 }
 
-#game { display: block; }
+#game { display: block; touch-action: none; }
+.touch-only { display: none; }
+@media (hover: none) and (pointer: coarse) { .touch-only { display: block; color: #ffe14d; } }
 
 .hidden { display: none !important; }
 .muted { color: #8a93b8; }
@@ -77,8 +79,8 @@ html, body {
 
 .hp-row { display: flex; align-items: center; gap: 8px; }
 .hp-bar {
-  width: 200px;
-  height: 14px;
+  width: 240px;
+  height: 18px;
   background: #1a1d2e;
   border: 2px solid #2e3350;
   border-radius: 4px;
@@ -91,13 +93,13 @@ html, body {
   transition: width 0.1s linear;
 }
 #hpFill.low { background: linear-gradient(90deg, #ff3b5c, #ff8a8a); animation: pulse 0.6s infinite alternate; }
-#hpText { font-weight: bold; font-size: 13px; text-shadow: 0 1px 2px #000; }
+#hpText { font-weight: bold; font-size: 16px; text-shadow: 0 1px 2px #000; }
 
-.slots { display: flex; gap: 4px; }
+.slots { display: flex; gap: 6px; }
 .slot {
   position: relative;
-  width: 30px;
-  height: 30px;
+  width: 40px;
+  height: 40px;
   border-radius: 4px;
   background: rgba(12, 14, 26, 0.85);
   border: 2px solid var(--c, #2a2f4a);
@@ -107,11 +109,13 @@ html, body {
 }
 .slot.passive { border-radius: 50%; }
 .slot.empty { border: 2px dashed #2a2f4a; background: rgba(12, 14, 26, 0.4); }
+.slot .pill-icon { width: 24px; height: 11px; border-radius: 6px; }
+.slot .gear-icon { width: 15px; height: 15px; }
 .slot b {
   position: absolute;
-  right: -4px;
-  bottom: -5px;
-  font-size: 10px;
+  right: -5px;
+  bottom: -6px;
+  font-size: 13px;
   background: #05060b;
   border: 1px solid var(--c);
   border-radius: 3px;
@@ -152,21 +156,22 @@ html, body {
 .codex-tile.locked .gear-icon, .gear-icon.huge.locked { filter: brightness(0) drop-shadow(0 0 1px #3a4066); box-shadow: none; }
 
 /* Temporary pill badges */
-#effects { display: flex; flex-direction: column; gap: 5px; margin-top: 4px; }
+#effects { display: flex; flex-direction: column; gap: 6px; margin-top: 6px; }
 .badge {
-  width: 250px;
+  width: 320px;
   background: rgba(12, 14, 26, 0.85);
   border: 1px solid #2a2f4a;
   border-left: 4px solid var(--pill);
   border-radius: 4px;
-  padding: 5px 8px 6px;
-  font-size: 11px;
+  padding: 7px 10px 8px;
+  font-size: 14px;
+  line-height: 1.35;
   animation: slideIn 0.25s ease-out;
 }
-.badge .name { color: var(--pill); font-weight: bold; letter-spacing: 1px; margin-bottom: 2px; }
+.badge .name { color: var(--pill); font-weight: bold; font-size: 15px; letter-spacing: 1px; margin-bottom: 3px; }
 .badge .buff { color: #5dff9a; }
 .badge .side { color: #ff5d6c; }
-.badge .bar { margin-top: 4px; height: 4px; background: #1f2338; border-radius: 2px; overflow: hidden; }
+.badge .bar { margin-top: 6px; height: 6px; background: #1f2338; border-radius: 2px; overflow: hidden; }
 .badge .bar div { height: 100%; background: var(--pill); }
 .badge.ending { animation: blink 0.3s infinite alternate; }
 
@@ -478,8 +483,25 @@ kbd {
   .pause-run { grid-template-columns: repeat(2, 1fr); }
   .pause-cols { grid-template-columns: 1fr; }
   .pause-stats { grid-template-columns: 1fr 1fr; }
-  .hp-bar { width: 120px; }
-  .badge { width: 190px; }
+  /* Phone HUD: slots on the left, timer + kills/gold/pause stacked on the right */
+  .hud-row {
+    display: grid; grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas: "left center" "left right";
+    column-gap: 8px; row-gap: 4px; padding: 8px 10px; align-items: start;
+  }
+  .hud-left { grid-area: left; min-width: 0; }
+  .hud-center { grid-area: center; text-align: right; }
+  .hud-right { grid-area: right; gap: 10px; align-items: flex-start; }
+  .hud-pause { width: 40px; height: 40px; }
+  .hp-bar { width: 140px; height: 16px; }
+  #hpText { font-size: 14px; }
+  .slots { gap: 4px; }
+  .slot { width: 34px; height: 34px; }
+  .slot .pill-icon { width: 20px; height: 9px; }
+  .slot b { font-size: 12px; }
+  .badge { width: 250px; font-size: 13px; padding: 6px 9px 7px; }
+  .badge .name { font-size: 14px; }
+  .stat span:last-child { font-size: 18px; }
   #timer { font-size: 24px; }
 }
 
@@ -489,6 +511,30 @@ kbd {
 @keyframes slideIn { from { transform: translateX(-20px); opacity: 0; } to { transform: none; opacity: 1; } }
 @keyframes cardIn { from { transform: translateY(20px) scale(0.95); opacity: 0; } to { transform: none; opacity: 1; } }
 @keyframes flashRed { 0%, 100% { color: #ffd23d; } 50% { color: #ff4d5e; } }
+
+/* HUD pause button (touch screens have no Esc) */
+.hud-pause {
+  pointer-events: auto;
+  align-self: flex-start;
+  width: 44px; height: 44px;
+  font-family: inherit; font-size: 16px; color: #e8ecff; cursor: pointer;
+  background: rgba(12, 14, 26, 0.85); border: 2px solid #2e3456; border-radius: 8px;
+}
+.hud-pause:hover { border-color: #ffe14d; }
+
+/* Touch joystick */
+.joy {
+  position: fixed; z-index: 5; pointer-events: none;
+  width: 112px; height: 112px; margin: -56px 0 0 -56px;
+  border-radius: 50%; border: 2px solid rgba(160, 180, 255, 0.35);
+  background: rgba(30, 36, 70, 0.25);
+}
+#joyKnob {
+  position: absolute; left: 50%; top: 50%;
+  width: 48px; height: 48px; border-radius: 50%;
+  background: rgba(94, 200, 255, 0.55); border: 2px solid rgba(220, 240, 255, 0.8);
+  transform: translate(-50%, -50%);
+}
 
 /* ===================================================== Mouse aim ===== */
 body.aiming #game { cursor: none; }
