@@ -485,7 +485,7 @@ const ENEMIES = {
 // Weighted regular spawns; `from` is the minute the type unlocks.
 const SPAWN_TABLE = [
   { type: 'germ',     from: 0,    w: (m) => Math.max(3, 10 - m) },
-  { type: 'bacillus', from: 0.75, w: () => 6 },
+  { type: 'bacillus', from: 1.25, w: () => 6 },
   { type: 'amoeba',   from: 2,    w: () => 3 },
   { type: 'spitter',  from: 3,    w: () => 2.5 },
   { type: 'virus',    from: 4,    w: (m) => 2 + m * 0.4 },

@@ -1038,7 +1038,7 @@ function makeEnemy(type, x, y, opts = {}) {
   const def = ENEMIES[type];
   const m = game.time / 3600;
   const elite = !!opts.elite;
-  const hpMult = def.boss ? (1 + m * 0.15) * stats.enemyHp : (1 + m * 0.3 + m * m * 0.035) * stats.enemyHp;
+  const hpMult = def.boss ? (1 + m * 0.15) * stats.enemyHp : (1 + m * 0.25 + m * m * 0.025) * stats.enemyHp;
   const hp = def.hp * hpMult * game.stage.hpMult * (elite ? 10 : 1) * (opts.hpScale || 1);
   const e = {
     id: game.nextId++,
@@ -1047,7 +1047,7 @@ function makeEnemy(type, x, y, opts = {}) {
     r: def.r * (elite ? 1.6 : 1) * (opts.sizeScale || 1),
     hp, maxHp: hp,
     speed: def.speed * rand(0.9, 1.1) * (elite ? 0.9 : 1) * game.stage.speedMult,
-    dmg: def.dmg * (elite ? 1.5 : 1) * (1 + m * 0.08) * game.stage.dmgMult,
+    dmg: def.dmg * (elite ? 1.5 : 1) * (1 + m * 0.06) * game.stage.dmgMult,
     xp: def.xp * (elite ? 12 : 1),
     elite,
     boss: !!def.boss,
@@ -1544,9 +1544,11 @@ function director() {
   // During the final fight, keep the pressure on.
   if (game.finalSpawned && game.time % 1800 === 0) runEvent('swarm', m);
 
-  const target = Math.min(MAX_ENEMIES, Math.floor((14 + m * 30) * stats.curse * game.stage.spawnMult));
-  if (game.time % 5 === 0) {
-    const toSpawn = Math.min(target - enemies.length, 3 + Math.floor(m));
+  // Crowd size the director tops up to. Starts small so the starting weapon can keep up,
+  // then ramps: ~20 at 1 min, ~50 at 3 min, ~95 at 5 min, ~195 at 9 min (General Ward).
+  const target = Math.min(MAX_ENEMIES, Math.floor((8 + m * 12 + m * m) * stats.curse * game.stage.spawnMult));
+  if (game.time % 6 === 0) {
+    const toSpawn = Math.min(target - enemies.length, 2 + Math.floor(m * 0.75));
     for (let i = 0; i < toSpawn; i++) spawnEnemy(pickSpawnType(m));
   }
 }
@@ -1559,7 +1561,7 @@ function runEvent(type, m) {
     setBanner('ELITE INFECTION', mods ? `${mods} — it carries a pill` : 'it carries a pill — take it if you dare', 150);
     Sfx.alarm();
   } else if (type === 'swarm') {
-    const n = Math.min(60, 28 + Math.floor(m * 4), Math.max(0, MAX_ENEMIES + 60 - enemies.length));
+    const n = Math.min(45, 20 + Math.floor(m * 3), Math.max(0, MAX_ENEMIES + 60 - enemies.length));
     const d = Math.hypot(W, H) / 2 + 20;
     for (let i = 0; i < n; i++) {
       const a = (i / n) * TAU;
