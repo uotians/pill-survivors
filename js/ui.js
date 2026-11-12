@@ -5,12 +5,24 @@
    game over), HUD, keyboard routing.
    ========================================================================= */
 
-const $ = (id) => document.getElementById(id);
+// Missing elements (e.g. a stale cached index.html after an update) must not
+// crash the whole game: warn once and hand back a detached placeholder.
+const missingEls = new Map();
+const $ = (id) => {
+  const el = document.getElementById(id);
+  if (el) return el;
+  if (!missingEls.has(id)) {
+    console.warn(`Pill Survivors: #${id} is missing from index.html (stale cache?)`);
+    missingEls.set(id, document.createElement('div'));
+  }
+  return missingEls.get(id);
+};
 
 const CODEX_TABS = [
   { id: 'weapon',  label: 'Weapons',       items: () => WEAPONS,     hint: 'Acquire this weapon during a run to unlock its entry.', countLabel: 'Acquired' },
   { id: 'evolution', label: 'Evolutions',  items: () => EVOLUTIONS,  hint: 'Combine a max-level weapon with the right prescription.', countLabel: 'Synthesized' },
   { id: 'passive', label: 'Prescriptions', items: () => PASSIVES,    hint: 'Take this prescription during a run to unlock its entry.', countLabel: 'Prescribed' },
+  { id: 'gear',    label: 'Gear',          items: () => GEAR,        hint: 'Find it in a chest. Elites drop small chests, bosses drop big ones.', countLabel: 'Equipped' },
   { id: 'pill',    label: 'Pills',         items: () => TEMP_PILLS,  hint: 'Swallow one during a run to unlock its entry.', countLabel: 'Swallowed' },
   { id: 'enemy',   label: 'Pathogens',     items: () => ENEMY_LIST,  hint: 'Defeat one to study it.', countLabel: 'Killed' }
 ];
@@ -54,8 +66,9 @@ const UI = {
     $('charStart').onclick = () => this.startSelected();
     $('shopBack').onclick = () => this.openMenu();
     $('resetBtn').onclick = () => this.resetProgress();
-    $('rerollBtn').onclick = () => rerollChoices();
+    $('rerollBtn').onclick = () => { this.banishMode = false; rerollChoices(); };
     $('resumeBtn').onclick = () => this.resume();
+    $('hudPauseBtn').onclick = () => this.pause();
     $('quitBtn').onclick = () => this.openMenu();
     $('retryBtn').onclick = () => startRun(this.selectedChar, this.selectedStage);
     $('menuBtn').onclick = () => this.openMenu();
@@ -90,6 +103,7 @@ const UI = {
     $('hud').classList.add('hidden');
     $('menuScreen').classList.remove('hidden');
     $('menuGold').textContent = Save.data.gold;
+    $('menuVersion').textContent = 'v' + GAME_VERSION;
     const b = Save.data.best;
     $('menuBest').textContent = Save.data.runs
       ? `Best: ${fmtTime(b.time * 60)} survived · ${b.kills} kills · LV ${b.level} · ${Save.data.wins} cure${Save.data.wins === 1 ? '' : 's'}`
@@ -224,7 +238,7 @@ const UI = {
       tile.className = 'codex-tile' + (known ? '' : ' locked') + (item.id === this.codexSel ? ' selected' : '') + (this.isUnseen(tab.id, item.id) ? ' unseen' : '');
       tile.style.setProperty('--c', item.color);
       tile.style.setProperty('--a', item.accent || '#ffffff');
-      tile.innerHTML = (tab.id === 'enemy' ? '<canvas width="56" height="56"></canvas>' : '<span class="pill-icon big"></span>') +
+      tile.innerHTML = (tab.id === 'enemy' ? '<canvas width="56" height="56"></canvas>' : tab.id === 'gear' ? '<span class="gear-icon big"></span>' : '<span class="pill-icon big"></span>') +
         `<span class="tile-name">${known ? item.name : '???'}</span>`;
       tile.onclick = () => { this.codexSel = item.id; this.renderCodex(); };
       grid.appendChild(tile);
@@ -242,7 +256,7 @@ const UI = {
     const count = Save.data.codex[tab.id][item.id] || 0;
     const icon = tab.id === 'enemy'
       ? `<canvas class="cd-portrait${count ? '' : ' locked'}" width="112" height="112"></canvas>`
-      : `<span class="pill-icon huge${count ? '' : ' locked'}" style="--c:${item.color};--a:${item.accent || '#ffffff'}"></span>`;
+      : `<span class="${tab.id === 'gear' ? 'gear-icon' : 'pill-icon'} huge${count ? '' : ' locked'}" style="--c:${item.color};--a:${item.accent || '#ffffff'}"></span>`;
     if (!count) {
       return `<div class="cd-head">${icon}<div><div class="cd-name">???</div><div class="cd-kind">${tab.label}</div></div></div>` +
         `<p class="cd-hint">LOCKED: ${tab.id === 'evolution' ? this.evolutionHint(item) : tab.hint}</p>`;
@@ -262,6 +276,10 @@ const UI = {
       body += `<div class="buff">&#9650; ${item.buff} <span class="muted">per level</span></div>` +
         `<div class="side">&#9660; ${item.side} <span class="muted">per level</span></div>` +
         `<p class="muted">Max level ${item.max}. Buff and side effect stack together.</p>`;
+    } else if (tab.id === 'gear') {
+      body += `<div class="buff">&#9650; ${item.desc}</div>` +
+        `<p class="muted">${GEAR_SLOTS.find((x) => x.id === item.slot).name} slot · <span class="rarity ${item.rarity}">${item.rarity.toUpperCase()}</span> · ` +
+        `${item.rarity === 'rare' ? 'Big chests (bosses)' : 'Small chests (elites)'}. No side effects.</p>`;
     } else if (tab.id === 'pill') {
       body += `<div class="buff">&#9650; ${item.buffDesc}</div><div class="side">&#9660; ${item.sideEffectDesc}</div>` +
         `<p class="muted">Lasts ${(item.duration / 60).toFixed(0)} seconds. Dropped by elites and found on the floor.</p>`;
@@ -533,27 +551,72 @@ const UI = {
 
   showLevelUp() {
     const isChest = game.levelUpSource === 'chest';
-    $('luTitle').textContent = isChest ? 'CARE PACKAGE' : `LEVEL ${game.level - game.pendingLevels + 1}`;
-    $('luSub').textContent = isChest ? 'Pick one free upgrade.' : 'Choose your prescription. Read the side effects.';
+    const big = game.chestTier !== 'small';
+    $('luTitle').textContent = isChest ? (big ? 'BIG CARE PACKAGE' : 'SUPPLY CRATE') : `LEVEL ${game.level - game.pendingLevels + 1}`;
+    if (!(game.banishes > 0)) this.banishMode = false;
+    $('luSub').textContent = this.banishMode
+      ? 'BANISH: pick a weapon or prescription to remove for the rest of this run. [B] / [Esc] cancels.'
+      : isChest ? (big ? 'Pick one: rare gear, an antidote or an evolution.' : 'Pick one: gear or supplies.') : 'Choose your prescription. Read the side effects.';
+    $('levelUpScreen').classList.toggle('banishing', !!this.banishMode);
     $('levelUpScreen').classList.remove('hidden');
     $('levelUpScreen').classList.toggle('chest', isChest);
+    $('levelUpScreen').classList.toggle('small-chest', isChest && !big);
     const list = $('cardList');
     list.innerHTML = '';
+    const canBanish = game.banishes > 0;
     game.choices.forEach((c, i) => {
+      const wrap = document.createElement('div');
+      wrap.className = 'card-wrap';
+      wrap.style.animationDelay = `${i * 60}ms`;
       const card = document.createElement('button');
-      card.className = 'card' + (c.kind === 'evolution' ? ' evolution' : '');
-      card.style.animationDelay = `${i * 60}ms`;
+      const banishable = c.kind === 'weapon' || c.kind === 'passive';
+      card.className = 'card' + (c.kind === 'evolution' ? ' evolution' : '') + (this.banishMode && !banishable ? ' no-banish' : '');
       card.innerHTML = this.cardHtml(c, i);
       card.onclick = () => this.pick(i);
-      list.appendChild(card);
+      wrap.appendChild(card);
+      // Per-card banish button (kept as an invisible spacer on cards that cannot be banished).
+      const ban = document.createElement('button');
+      ban.className = 'card-banish' + (banishable && canBanish ? '' : ' off');
+      ban.innerHTML = `&#10005; Banish <small>(${game.banishes} left)</small>`;
+      ban.title = 'Remove this from all future level-ups this run';
+      ban.onclick = () => this.banishCard(i);
+      if (!isChest) wrap.appendChild(ban); // chest cards can never be banished
+      list.appendChild(wrap);
     });
     const rr = $('rerollBtn');
     rr.classList.toggle('hidden', game.rerolls <= 0);
     rr.textContent = `Reroll (${game.rerolls}) [R]`;
+    $('luBanished').innerHTML = game.banished.length ? 'Banished: ' + this.banishedNames().join(', ') : '';
     this.inputGuardUntil = performance.now() + 350;
   },
 
   cardHtml(c, i) {
+    const key = `<div class="key">[${i + 1}]</div>`;
+    if (c.kind === 'gear') {
+      const g = c.def;
+      const slot = GEAR_SLOTS.find((x) => x.id === g.slot).name;
+      const curId = player.gear[g.slot];
+      const cur = curId ? GEAR_BY_ID[curId] : null;
+      return `<div class="card-top" style="--c:${g.color}"><span class="gear-icon"></span>` +
+        `<span class="card-name">${g.name}</span><span class="card-lv"><span class="rarity ${g.rarity}">${g.rarity.toUpperCase()}</span></span></div>` +
+        `<div class="card-kind">GEAR · ${slot.toUpperCase()}</div>` +
+        `<div class="buff">▲ ${g.desc}</div><div class="no-side">No side effects</div>` +
+        (cur ? `<div class="replaces">Replaces <b style="color:${cur.color}">${cur.name}</b> (${cur.desc})</div>` : `<div class="replaces">Empty ${slot.toLowerCase()} slot</div>`) + key;
+    }
+    if (c.kind === 'antidote') {
+      const d = c.def;
+      return `<div class="card-top" style="--c:#3dff8a;--a:#ffffff"><span class="pill-icon"></span>` +
+        `<span class="card-name">Antidote</span><span class="card-lv"><span class="rarity rare">RARE</span></span></div>` +
+        `<div class="card-kind">CURE · <span style="color:${d.color}">${d.name.toUpperCase()}</span></div>` +
+        `<div class="card-desc">Removes this prescription's side effect for the rest of the run. The buff stays.</div>` +
+        `<div class="side cured">▼ ${d.side}</div>` + key;
+    }
+    if (c.kind === 'supply') {
+      const d = c.def;
+      return `<div class="card-top" style="--c:${d.color}"><span class="pill-icon"></span>` +
+        `<span class="card-name">${d.name}</span></div>` +
+        `<div class="card-kind">SUPPLIES</div><div class="card-desc">${d.desc}</div>` + key;
+    }
     if (c.kind === 'gold' || c.kind === 'heal') {
       const gold = c.kind === 'gold';
       return `<div class="card-top" style="--c:${gold ? '#ffd23d' : '#3dff8a'}"><span class="pill-icon"></span>` +
@@ -565,7 +628,10 @@ const UI = {
       return `<div class="card-top" style="--c:${ev.color};--a:${ev.accent}"><span class="pill-icon"></span>` +
         `<span class="card-name">${ev.name}</span><span class="card-lv"><span class="new">EVOLUTION</span></span></div>` +
         `<div class="card-kind">${WEAPON_BY_ID[ev.from].name} + ${PASSIVE_BY_ID[ev.requires].name}</div>` +
-        `<div class="card-desc">${ev.desc}</div><div class="side">&#9660; ${ev.side}</div><div class="key">[${i + 1}]</div>`;
+        this.weaponTagsHtml(ev) +
+        `<div class="card-desc">${ev.desc}</div>` +
+        this.weaponStatsHtml(ev, 1, this.currentWeaponFor(ev.from)) +
+        `<div class="side">&#9660; ${ev.side}</div><div class="key">[${i + 1}]</div>`;
     }
     const def = c.def;
     const isWeapon = c.kind === 'weapon';
@@ -574,7 +640,8 @@ const UI = {
     let body;
     if (isWeapon) {
       const desc = def.levelText[c.level - 1];
-      body = `<div class="card-desc">${desc}</div>`;
+      const prev = c.level > 1 ? { def, level: c.level - 1 } : null;
+      body = this.weaponTagsHtml(def) + `<div class="card-desc">${desc}</div>` + this.weaponStatsHtml(def, c.level, prev);
     } else {
       body =
         `<div class="buff">▲ ${def.buff}</div>` +
@@ -587,8 +654,86 @@ const UI = {
       body + `<div class="key">[${i + 1}]</div>`;
   },
 
+  // ------------------------------------------------ Weapon details --
+  currentWeaponFor(id) {
+    const w = player.weapons.find((x) => x.id === id || x.def.from === id);
+    return w ? { def: w.def, level: w.level } : null;
+  },
+
+  weaponTagsHtml(def) {
+    const info = WEAPON_INFO[def.family] || { tags: [], aim: '' };
+    return '<div class="wtags">' + info.tags.map((t) => `<span class="wtag">${t}</span>`).join('') + '</div>' +
+      (info.aim ? `<div class="waim">&#8982; ${info.aim}</div>` : '');
+  },
+
+  // Effective numbers for one weapon level, including the player's current stats.
+  weaponStatRows(def, level) {
+    const b = def.base(level);
+    const ws = weaponStats({ def, level });
+    const fam = def.family;
+    const sec = (f) => (f / 60).toFixed(f < 60 ? 2 : 1) + ' s';
+    const num = (v) => (v < 10 ? Math.round(v * 10) / 10 : Math.round(v));
+    const countName = { pistol: 'Capsules', scalpel: 'Scalpels', saw: 'Saws', orbit: 'Pills', zap: 'Strikes', rifle: 'Darts',
+      flask: 'Flasks', syringe: 'Needles', whip: 'Directions' }[fam] || 'Amount';
+    const rows = [['Damage', num(ws.dmg)]];
+    if (b.amount !== undefined) rows.push([countName, ws.amount]);
+    if (b.tick) rows.push(['Hits every', sec(ws.tick)]);
+    if (b.cd > 1) rows.push(['Cooldown', sec(ws.cd)]);
+    if (b.pierce !== undefined) rows.push(['Pierce', b.pierce >= 999 ? '∞' : ws.pierce]);
+    if (b.chains) rows.push(['Chains', ws.chains]);
+    if (b.range) rows.push([fam === 'zap' ? 'Chain range' : 'Range', Math.round(ws.range) + ' px']);
+    if (b.stun) rows.push(['Stun', sec(b.stun)]);
+    if (PRECISION_FAMILIES.includes(fam)) rows.push(['Vs elites/bosses', '×' + PRECISION_MULT]);
+    if (b.radius) rows.push([fam === 'orbit' ? 'Orbit radius' : fam === 'flask' ? 'Pool radius' : 'Radius', Math.round(ws.radius) + ' px']);
+    if (b.length) rows.push(['Length', Math.round(b.length * stats.area) + ' px']);
+    if (b.dur) rows.push([fam === 'flask' ? 'Pool lasts' : 'Duration', b.dur >= 1e8 ? 'Permanent' : sec(ws.dur)]);
+    if (b.turn) rows.push(['Homing', Math.round(b.turn * 100) / 100]);
+    if (b.knock) rows.push(['Knockback', b.knock]);
+    return rows;
+  },
+
+  // Stat table; with `prev` ({def, level}) changed values show as "old → new".
+  weaponStatsHtml(def, level, prev) {
+    const rows = this.weaponStatRows(def, level);
+    const old = prev ? Object.fromEntries(this.weaponStatRows(prev.def, prev.level)) : null;
+    return '<div class="wstats">' + rows.map(([k, v]) => {
+      const o = old ? old[k] : undefined;
+      const changed = old && o !== v;
+      const val = changed ? `<span class="was">${o === undefined ? '—' : o}</span> &rarr; <b class="up">${v}</b>` : `<b>${v}</b>`;
+      return `<div><span>${k}</span><em>${val}</em></div>`;
+    }).join('') + '</div>';
+  },
+
+  banishedNames() {
+    return game.banished.map((k) => {
+      const [kind, id] = k.split(':');
+      const def = kind === 'weapon' ? WEAPON_BY_ID[id] : PASSIVE_BY_ID[id];
+      return def ? `<span style="color:${def.color}">${def.name}</span>` : id;
+    });
+  },
+
+  banishCard(i) {
+    if (performance.now() < this.inputGuardUntil) return;
+    if (banishChoice(i)) {
+      this.banishMode = false;
+      this.showLevelUp();
+      this.inputGuardUntil = 0;
+    }
+  },
+
+  toggleBanish() {
+    if (game.state !== State.LEVELUP || !(game.banishes > 0)) return;
+    this.banishMode = !this.banishMode;
+    this.showLevelUp();
+    this.inputGuardUntil = 0;
+  },
+
   pick(i) {
     if (performance.now() < this.inputGuardUntil) return;
+    if (this.banishMode) {
+      this.banishCard(i);
+      return;
+    }
     chooseOption(i);
   },
 
@@ -600,7 +745,90 @@ const UI = {
     if (game.state !== State.PLAYING) return;
     game.state = State.PAUSED;
     $('pauseScreen').classList.remove('hidden');
-    $('pauseBuild').innerHTML = this.buildHtml();
+    $('pauseBuild').innerHTML = this.pauseHtml();
+  },
+
+  gearHtml() {
+    return GEAR_SLOTS.map((slot) => {
+      const g = player.gear[slot.id] && GEAR_BY_ID[player.gear[slot.id]];
+      return g
+        ? `<div class="build-row" style="--c:${g.color}"><span class="dot"></span>${g.name} <b>${slot.name}</b> <span class="rarity ${g.rarity}">${g.rarity}</span><div class="mini buff">▲ ${g.desc}</div></div>`
+        : `<div class="build-row muted"><span class="dot" style="--c:#2e3456"></span>${slot.name}: empty</div>`;
+    }).join('');
+  },
+
+  pauseHtml() {
+    const fmtPct = (v) => (v >= 0 ? '+' : '') + Math.round(v * 100) + '%';
+    const run = [
+      ['Stage', `<span style="color:${game.stage.color}">${game.stage.name}</span>`],
+      ['Character', game.char.name],
+      ['Time', fmtTime(game.time)],
+      ['Level', `${game.level} <span class="muted">(${Math.floor(game.xp)}/${Math.ceil(game.xpNext)} XP)</span>`],
+      ['Kills', game.kills],
+      ['Gold', game.gold],
+      ['Damage dealt', Math.round(game.damageDealt).toLocaleString()],
+      ['Damage taken', Math.round(game.damageTaken || 0).toLocaleString()],
+      ['Rerolls / Banishes', `${game.rerolls} / ${game.banishes}`],
+      ['Revives', game.revives]
+    ];
+    let html = '<div class="pause-run">' + run.map(([k, v]) => `<div><span class="label">${k}</span><span>${v}</span></div>`).join('') + '</div>';
+
+    // Weapons with live numbers and damage share.
+    const total = Object.values(game.damageBy).reduce((a, b) => a + b, 0) || 1;
+    html += '<div class="pause-cols"><div class="build-col"><h3>Weapons</h3>';
+    for (const w of player.weapons) {
+      const dealt = game.damageBy[w.def.family] || 0;
+      html += `<div class="build-row wrow" style="--c:${w.def.color}"><span class="dot"></span>${w.def.name} <b>${w.def.evo ? 'EVOLVED' : 'LV ' + w.level + '/' + w.def.max}</b>` +
+        `<span class="dealt">${Math.round(dealt).toLocaleString()} dmg · ${Math.round((dealt / total) * 100)}%</span>` +
+        this.weaponTagsHtml(w.def) + this.weaponStatsHtml(w.def, w.level) + '</div>';
+    }
+    html += `<div class="muted slots-left">Weapon slots: ${player.weapons.length}/${MAX_WEAPON_SLOTS}</div>`;
+    html += '</div><div class="build-col"><h3>Prescriptions</h3>';
+    if (!player.passiveOrder.length) html += '<div class="muted">none yet</div>';
+    for (const id of player.passiveOrder) {
+      const def = PASSIVE_BY_ID[id];
+      const L = player.passives[id];
+      html += `<div class="build-row" style="--c:${def.color}"><span class="dot"></span>${def.name} <b>LV ${L}/${def.max}</b>` +
+        `<div class="mini buff">▲ ${def.buff} ×${L}</div>` +
+        (player.cured.includes(id) ? `<div class="mini cured">✚ side effect cured</div>` : `<div class="mini side">▼ ${def.side} ×${L * stats.sideMult}</div>`) + '</div>';
+    }
+    html += `<div class="muted slots-left">Prescription slots: ${player.passiveOrder.length}/${MAX_PASSIVE_SLOTS}</div>`;
+    const pills = player.tempEffects;
+    if (pills.length) {
+      html += '<h3>Active pills</h3>';
+      for (const e of pills) {
+        html += `<div class="build-row" style="--c:${e.def.color}"><span class="dot"></span>${e.def.name} <b>${Math.ceil(e.duration / 60)} s</b>` +
+          `<div class="mini buff">▲ ${e.def.buffDesc}</div><div class="mini side">▼ ${e.def.sideEffectDesc}</div></div>`;
+      }
+    }
+    html += '<h3>Gear</h3>' + this.gearHtml();
+    if (game.banished.length) html += `<h3>Banished</h3><div class="muted">${this.banishedNames().join(', ')}</div>`;
+    html += '</div></div>';
+
+    // Current character stats (after every prescription, pill and upgrade).
+    const st = [
+      ['Max HP', `${Math.ceil(player.hp)}/${Math.round(stats.maxHp)}`],
+      ['Regen', `${Math.round(stats.regen * 10) / 10} HP/s`],
+      ['Armor', stats.armor],
+      ['Incoming damage', fmtPct(stats.dmgTaken - 1)],
+      ['Move speed', fmtPct(stats.speed / BASE_STATS.speed - 1)],
+      ['Might', fmtPct(stats.might - 1)],
+      ['Area', fmtPct(stats.area - 1)],
+      ['Cooldown', fmtPct(stats.cooldown - 1)],
+      ['Extra projectiles', '+' + stats.amount],
+      ['Duration', fmtPct(stats.duration - 1)],
+      ['Projectile speed', fmtPct(stats.projSpeed - 1)],
+      ['Crit chance', Math.round((0.04 * stats.luck + stats.crit) * 100) + '%'],
+      ['Vs bosses/elites', fmtPct(stats.bossDmg - 1)],
+      ['Pickup radius', Math.round(stats.magnet) + ' px'],
+      ['XP gain', fmtPct(stats.growth - 1)],
+      ['Luck', fmtPct(stats.luck - 1)],
+      ['Gold gain', fmtPct(stats.greed - 1)],
+      ['Enemy count', fmtPct(stats.curse - 1)]
+    ];
+    html += '<h3 class="pause-h">Stats</h3><div class="pause-stats">' +
+      st.map(([k, v]) => `<div><span>${k}</span><b>${v}</b></div>`).join('') + '</div>';
+    return html;
   },
 
   resume() {
@@ -623,6 +851,7 @@ const UI = {
       html += `<div class="build-row" style="--c:${def.color}"><span class="dot"></span>${def.name} <b>LV ${L}</b>` +
         `<div class="mini buff">▲ ${def.buff} ×${L}</div><div class="mini side">▼ ${def.side} ×${L}</div></div>`;
     }
+    if (Object.keys(player.gear).length) html += '<h3>Gear</h3>' + this.gearHtml();
     html += '</div>';
     return html;
   },
@@ -699,12 +928,19 @@ const UI = {
       const id = player.passiveOrder[i];
       if (id) {
         const def = PASSIVE_BY_ID[id];
-        ph += `<div class="slot passive" title="${def.name}: ${def.buff} / ${def.side}" style="--c:${def.color}"><span class="pill-icon"></span><b>${player.passives[id]}</b></div>`;
+        const cured = player.cured.includes(id);
+        ph += `<div class="slot passive${cured ? ' cured' : ''}" title="${def.name}: ${def.buff} / ${cured ? 'side effect cured' : def.side}" style="--c:${def.color}"><span class="pill-icon"></span><b>${player.passives[id]}</b></div>`;
       } else {
         ph += '<div class="slot passive empty"></div>';
       }
     }
     $('passiveSlots').innerHTML = ph;
+    $('gearSlots').innerHTML = GEAR_SLOTS.map((slot) => {
+      const g = player.gear[slot.id] && GEAR_BY_ID[player.gear[slot.id]];
+      return g
+        ? `<div class="slot gear ${g.rarity}" title="${g.name} (${slot.name}): ${g.desc}" style="--c:${g.color}"><span class="gear-icon"></span></div>`
+        : `<div class="slot gear empty" title="${slot.name}: empty"></div>`;
+    }).join('');
   },
 
   updateBadges() {
@@ -783,7 +1019,9 @@ const UI = {
         break;
       case State.LEVELUP:
         if (digit >= 1 && digit <= game.choices.length) this.pick(digit - 1);
-        else if (code === 'KeyR') rerollChoices();
+        else if (code === 'KeyR') { this.banishMode = false; rerollChoices(); }
+        else if (code === 'KeyB') this.toggleBanish();
+        else if (code === 'Escape' && this.banishMode) this.toggleBanish();
         break;
       case State.GAMEOVER:
         if (performance.now() < this.inputGuardUntil) break;
@@ -824,9 +1062,59 @@ window.addEventListener('mousemove', (e) => {
   mouse.active = true;
 });
 
+// ------------------------------------------------------ Touch controls --
+// A floating joystick: put a thumb down anywhere on the game and drag.
+const JOY_RADIUS = 56;
+let touchAimSwitched = false;
+
+function resetStick() {
+  touchStick.active = false;
+  touchStick.id = null;
+  touchStick.x = touchStick.y = 0;
+  $('joyBase').classList.add('hidden');
+}
+
+window.addEventListener('pointerdown', (e) => {
+  if (e.pointerType === 'mouse') return;
+  // Mouse aim is useless without a mouse: switch to auto-target once.
+  if (!touchAimSwitched) {
+    touchAimSwitched = true;
+    const s = settings();
+    if (s.mouseAim || !s.autoTarget) { s.mouseAim = false; s.autoTarget = true; Save.save(); }
+  }
+  if (e.target !== $('game') || game.state !== State.PLAYING || touchStick.active) return;
+  e.preventDefault();
+  Object.assign(touchStick, { active: true, id: e.pointerId, ox: e.clientX, oy: e.clientY, x: 0, y: 0 });
+  const base = $('joyBase');
+  base.style.left = e.clientX + 'px';
+  base.style.top = e.clientY + 'px';
+  $('joyKnob').style.transform = 'translate(-50%, -50%)';
+  base.classList.remove('hidden');
+}, { passive: false });
+
+window.addEventListener('pointermove', (e) => {
+  if (!touchStick.active || e.pointerId !== touchStick.id) return;
+  e.preventDefault();
+  let dx = e.clientX - touchStick.ox;
+  let dy = e.clientY - touchStick.oy;
+  const d = Math.hypot(dx, dy);
+  if (d > JOY_RADIUS) { dx *= JOY_RADIUS / d; dy *= JOY_RADIUS / d; }
+  const k = Math.min(1, d / JOY_RADIUS);
+  const dead = 0.15;
+  const mag = k < dead ? 0 : (k - dead) / (1 - dead);
+  touchStick.x = d ? (dx / Math.min(d, JOY_RADIUS)) * mag : 0;
+  touchStick.y = d ? (dy / Math.min(d, JOY_RADIUS)) * mag : 0;
+  $('joyKnob').style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`;
+}, { passive: false });
+
+for (const ev of ['pointerup', 'pointercancel']) {
+  window.addEventListener(ev, (e) => { if (e.pointerId === touchStick.id) resetStick(); });
+}
+
 window.addEventListener('pagehide', () => Save.save());
 
 window.addEventListener('blur', () => {
   for (const k in keys) keys[k] = false;
+  resetStick();
   if (game.state === State.PLAYING) UI.pause();
 });

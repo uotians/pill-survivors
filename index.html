@@ -4,7 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Pill Survivors</title>
-  <link rel="stylesheet" href="style.css">
+  <meta name="game-version" content="1.4.0">
+  <link rel="stylesheet" href="style.css?v=1.4.0">
 </head>
 <body>
   <canvas id="game"></canvas>
@@ -20,15 +21,19 @@
         </div>
         <div id="weaponSlots" class="slots"></div>
         <div id="passiveSlots" class="slots"></div>
+        <div id="gearSlots" class="slots"></div>
         <div id="effects"></div>
       </div>
       <div class="hud-center"><div id="timer">00:00</div><div id="stageName"></div></div>
       <div class="hud-right">
         <div class="stat"><span class="label">KILLS</span><span id="kills">0</span></div>
         <div class="stat gold"><span class="label">GOLD</span><span id="gold">0</span></div>
+        <button id="hudPauseBtn" class="hud-pause" title="Pause &amp; run details">&#10074;&#10074;</button>
       </div>
     </div>
   </div>
+  <!-- Touch joystick: appears where the thumb lands -->
+  <div id="joyBase" class="joy hidden"><div id="joyKnob"></div></div>
   <div id="toasts"></div>
 
   <!-- ================= Main menu ================= -->
@@ -46,12 +51,14 @@
       <p class="gold-line">Gold: <b id="menuGold">0</b></p>
       <p id="menuBest" class="muted"></p>
       <div class="controls">
+        <div class="touch-only">Touch: drag anywhere to move · tap &#10074;&#10074; to pause</div>
         <div><kbd>WASD</kbd> / <kbd>Arrows</kbd> move — weapons fire automatically</div>
         <div><kbd>Mouse</kbd> aim (see Settings)</div>
         <div><kbd>1</kbd>-<kbd>4</kbd> pick upgrade</div>
-        <div><kbd>P</kbd> pause</div>
+        <div><kbd>P</kbd> / <kbd>Esc</kbd> pause &amp; run details</div>
         <div><kbd>M</kbd> mute</div>
       </div>
+      <p id="menuVersion" class="version"></p>
     </div>
   </div>
 
@@ -131,7 +138,10 @@
       <h2 id="luTitle">LEVEL UP</h2>
       <p id="luSub" class="tagline"></p>
       <div id="cardList" class="card-list"></div>
-      <button id="rerollBtn" class="btn alt small">Reroll [R]</button>
+      <p id="luBanished" class="lu-banished muted"></p>
+      <div class="lu-actions">
+        <button id="rerollBtn" class="btn alt small">Reroll [R]</button>
+      </div>
     </div>
   </div>
 
@@ -169,14 +179,14 @@
     </div>
   </div>
 
-  <script src="js/core.js"></script>
-  <script src="js/data.js"></script>
-  <script src="js/world.js"></script>
-  <script src="js/achievements.js"></script>
-  <script src="js/music.js"></script>
-  <script src="js/game.js"></script>
-  <script src="js/render.js"></script>
-  <script src="js/ui.js"></script>
-  <script src="js/main.js"></script>
+  <script src="js/core.js?v=1.4.0"></script>
+  <script src="js/data.js?v=1.4.0"></script>
+  <script src="js/world.js?v=1.4.0"></script>
+  <script src="js/achievements.js?v=1.4.0"></script>
+  <script src="js/music.js?v=1.4.0"></script>
+  <script src="js/game.js?v=1.4.0"></script>
+  <script src="js/render.js?v=1.4.0"></script>
+  <script src="js/ui.js?v=1.4.0"></script>
+  <script src="js/main.js?v=1.4.0"></script>
 </body>
 </html>

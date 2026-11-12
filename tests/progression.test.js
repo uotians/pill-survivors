@@ -4,6 +4,83 @@
 
 module.exports = [
   {
+    name: 'banish removes a card for the rest of the run and refills the slot',
+    fn(t) {
+      const g = t.game({ seed: 6 });
+      const r = g.run(() => {
+        startRun('nurse');
+        const startBanishes = game.banishes;
+        openLevelUp('level');
+        const i = game.choices.findIndex((c) => c.kind === 'passive');
+        const target = game.choices[i];
+        const key = target.kind + ':' + target.def.id;
+        const before = game.choices.length;
+        const ok = banishChoice(i);
+        const after = game.choices.map((c) => c.kind + ':' + (c.def && c.def.id));
+        let reoffered = 0;
+        for (let n = 0; n < 500; n++) if (buildChoices().some((c) => c.def && c.kind + ':' + c.def.id === key)) reoffered++;
+        // evolutions / fallback cards cannot be banished; banishes run out
+        while (game.banishes > 0) banishChoice(game.choices.findIndex((c) => c.kind === 'weapon' || c.kind === 'passive'));
+        const noMore = banishChoice(0);
+        return { startBanishes, ok, key, after, before, reoffered, noMore, left: game.banishes,
+          unique: new Set(after).size === after.length };
+      });
+      t.eq(r.startBanishes, 2, 'two banishes per run by default');
+      t.ok(r.ok, 'banish succeeded');
+      t.ok(!r.after.includes(r.key), 'banished card left the offer');
+      t.eq(r.after.length, r.before, 'slot was refilled');
+      t.ok(r.unique, 'no duplicate cards after refill');
+      t.eq(r.reoffered, 0, 'never offered again');
+      t.ok(!r.noMore && r.left === 0, 'cannot banish without charges');
+    }
+  },
+  {
+    name: 'Contraindication pharmacy upgrade adds banishes',
+    fn(t) {
+      const g = t.game();
+      const n = g.run(() => { Save.data.shop.banish = 2; startRun('nurse'); return game.banishes; });
+      t.eq(n, 4, 'base 2 + 2 levels');
+    }
+  },
+  {
+    name: 'level-up offers both kinds even with full slots (upgrades only)',
+    fn(t) {
+      const g = t.game({ seed: 5 });
+      const r = g.run(() => {
+        startRun('nurse');
+        for (const def of WEAPONS) if (player.weapons.length < MAX_WEAPON_SLOTS && !getWeapon(def.id)) addWeapon(def.id);
+        for (const def of PASSIVES.slice(0, MAX_PASSIVE_SLOTS)) applyChoice({ kind: 'passive', def, level: 1 });
+        let bad = 0;
+        for (let i = 0; i < 300; i++) {
+          const c = buildChoices();
+          if (!c.some((x) => x.kind === 'weapon') || !c.some((x) => x.kind === 'passive')) bad++;
+        }
+        // max every weapon: only prescriptions remain, and that is still a valid roll
+        for (const w of player.weapons) w.level = w.def.max;
+        const onlyP = buildChoices();
+        return { bad, onlyP: onlyP.length > 0 && onlyP.every((x) => x.kind === 'passive' || x.kind === 'evolution') };
+      });
+      t.eq(r.bad, 0, 'full slots: every roll has a weapon upgrade and a prescription upgrade');
+      t.ok(r.onlyP, 'weapons maxed: still offers prescriptions');
+    }
+  },
+  {
+    name: 'level-up guarantees both kinds while both pools have options',
+    fn(t) {
+      const g = t.game({ seed: 4 });
+      const r = g.run(() => {
+        startRun('nurse');
+        let bad = 0;
+        for (let i = 0; i < 500; i++) {
+          const c = buildChoices();
+          if (!c.some((x) => x.kind === 'weapon') || !c.some((x) => x.kind === 'passive')) bad++;
+        }
+        return bad;
+      });
+      t.eq(r, 0, 'fresh run: every roll has a weapon and a prescription');
+    }
+  },
+  {
     name: 'achievements unlock content and gold',
     fn(t) {
       const g = t.game();

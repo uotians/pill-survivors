@@ -190,6 +190,8 @@ const Sfx = {
 // ----------------------------------------------------------- Input state --
 const keys = {};
 const mouse = { x: 0, y: 0, active: false }; // screen-space cursor
+// Virtual joystick for touch screens: x/y in -1..1 (analog), set by ui.js.
+const touchStick = { active: false, id: null, ox: 0, oy: 0, x: 0, y: 0 };
 
 // ------------------------------------------------------------- Save data --
 const Save = {
@@ -207,7 +209,7 @@ const Save = {
       wins: 0,
       settings: { mouseAim: true, autoTarget: false, sound: true, music: true, shake: true },
       // Encyclopedia: id -> times found/killed. Presence == discovered.
-      codex: { weapon: {}, evolution: {}, passive: {}, pill: {}, enemy: {} },
+      codex: { weapon: {}, evolution: {}, passive: {}, gear: {}, pill: {}, enemy: {} },
       codexSeen: {},
       achievements: {},   // id -> unlock timestamp
       shopUnlocked: {},   // pharmacy items unlocked by achievements
@@ -237,6 +239,7 @@ const Save = {
     this.data.codex = {
       weapon: Object.assign({}, codex.weapon),
       passive: Object.assign({}, codex.passive),
+      gear: Object.assign({}, codex.gear),
       pill: Object.assign({}, codex.pill),
       enemy: Object.assign({}, codex.enemy),
       evolution: Object.assign({}, codex.evolution)

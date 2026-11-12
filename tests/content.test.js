@@ -186,13 +186,63 @@ module.exports = [
         for (const ch of CHARACTERS) {
           Save.data.chars[ch.id] = true;
           startRun(ch.id);
-          const b = __bot({ untilTime: 60, frames: 60 * 120, keepAlive: true });
+          // Stand still: enemies come to us, so short-range weapons (aura) get their chance too.
+          const b = __bot({ untilTime: 60, frames: 60 * 120, keepAlive: true, move: 'none' });
           out[ch.id] = { weapon: player.weapons[0].def.family, kills: b.kills };
         }
         return out;
       });
       t.log(Object.entries(r).map(([k, v]) => `${k}: ${v.kills}`).join(', '));
       for (const [id, v] of Object.entries(r)) t.ok(v.kills > 5, `${id} kills enemies`);
+    }
+  }
+  ,
+  {
+    name: 'precision weapons deal x1.5 to elites and bosses, AoE does not',
+    fn(t) {
+      const g = t.game();
+      const r = g.run(() => {
+        startRun('nurse');
+        const hit = (src, elite) => {
+          const e = spawnEnemy('virus', elite ? { elite: true } : undefined);
+          e.shield = 0; e.immune = null; // strip random elite mutations
+          const hp = e.hp;
+          damageEnemy(e, 10, 0, 0, true, src);
+          e.dead = true;
+          return hp - e.hp;
+        };
+        return { pistolElite: hit('pistol', true), pistolNormal: hit('pistol', false), rifleElite: hit('rifle', true), waveElite: hit('wave', true) };
+      });
+      t.eq(r.pistolNormal, 10, 'normal enemy: no bonus');
+      t.eq(r.pistolElite, 15, 'pistol vs elite: x1.5');
+      t.eq(r.rifleElite, 15, 'rifle vs elite: x1.5');
+      t.eq(r.waveElite, 10, 'AoE vs elite: no bonus');
+    }
+  },
+  {
+    name: 'Tranquilizer Rifle targets the toughest enemy and stuns',
+    fn(t) {
+      const g = t.game();
+      const r = g.run(() => {
+        startRun('nurse');
+        player.weapons = []; addWeapon('rifle'); recomputeStats();
+        game.eventIdx = EVENTS.length;
+        enemies.length = 0;
+        const weak = makeEnemy('germ', player.x + 120, player.y); enemies.push(weak);
+        const elite = makeEnemy('virus', player.x - 200, player.y, { elite: true }); enemies.push(elite);
+        let firstAngle = null, stunned = false;
+        for (let f = 0; f < 240; f++) {
+          update();
+          const d = projectiles.find((p) => p.kind === 'dart');
+          if (d && firstAngle === null) firstAngle = Math.cos(d.angle);
+          if (!weak.dead && weak.stunUntil > game.time) stunned = true;
+          if (elite.stunUntil > game.time) stunned = true;
+        }
+        return { firstAngle, stunned, eliteHurt: elite.hp < elite.maxHp };
+      });
+      t.ok(r.firstAngle !== null && r.firstAngle < 0, 'first dart flies toward the elite (left), not the closer germ');
+      t.ok(r.eliteHurt, 'elite took damage');
+      t.ok(r.stunned, 'darts stun');
     }
   }
 ];
