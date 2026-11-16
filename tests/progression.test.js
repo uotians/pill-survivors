@@ -92,7 +92,7 @@ module.exports = [
         for (let i = 0; i < 4; i++) { startRun('nurse'); player.hp = -1; for (let j = 0; j < 200; j++) update(); }
         out.revive = !!Save.data.shopUnlocked.revive;
         startRun('nurse');
-        for (const p of PASSIVES.slice(0, 6)) { player.passives[p.id] = 1; player.passiveOrder.push(p.id); }
+        for (const p of PASSIVES.slice(0, MAX_PASSIVE_SLOTS)) { player.passives[p.id] = 3; player.passiveOrder.push(p.id); }
         recomputeStats(); for (let i = 0; i < 31; i++) update();
         out.hypo = !!Save.data.chars.hypochondriac;
         startRun('nurse'); for (let i = 0; i < 25; i++) applyTempPill(TEMP_PILLS[i % 5]); for (let i = 0; i < 31; i++) update();

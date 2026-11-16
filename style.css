@@ -371,6 +371,13 @@ kbd {
 .card .buff { color: #5dff9a; }
 .card .side { color: #ff5d6c; }
 .card .stack { color: #ff8a9a; font-size: 11px; opacity: 0.8; margin-top: 4px; }
+.card .evo-hint {
+  color: #ffe14d; font-size: 12px; margin: 4px 0;
+  padding: 3px 6px; border-radius: 4px; background: rgba(255, 225, 77, 0.12);
+}
+.card .evo-hint.dim { color: #b8a96a; background: none; padding: 0; font-size: 11px; }
+/* A prescription that would evolve one of your weapons glows like an evolution card. */
+.card:has(.evo-hint:not(.dim)) { box-shadow: 0 0 0 2px rgba(255, 225, 77, 0.55), 0 0 18px rgba(255, 225, 77, 0.25); }
 
 /* Build summary (pause / game over) */
 .build {
