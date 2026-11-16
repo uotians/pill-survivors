@@ -1177,7 +1177,7 @@ function makeEnemy(type, x, y, opts = {}) {
   const m = game.time / 3600;
   const elite = !!opts.elite;
   const hpMult = def.boss ? (1 + m * 0.15) * stats.enemyHp : (1 + m * 0.25 + m * m * 0.025) * stats.enemyHp;
-  const hp = def.hp * hpMult * game.stage.hpMult * (elite ? 10 : 1) * (opts.hpScale || 1);
+  const hp = def.hp * (def.boss ? BOSS_HP_MULT : ENEMY_HP_MULT) * hpMult * game.stage.hpMult * (elite ? 10 : 1) * (opts.hpScale || 1);
   const e = {
     id: game.nextId++,
     type, def, x, y,

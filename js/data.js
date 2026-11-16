@@ -6,7 +6,7 @@
    ========================================================================= */
 
 // Shown on the main menu. Bump on every release.
-const GAME_VERSION = '0.5.0'; // keep in sync with index.html (meta + ?v= on every file)
+const GAME_VERSION = '0.6.0'; // keep in sync with index.html (meta + ?v= on every file)
 
 const lv = (arr, L) => arr[clamp(L, 1, arr.length) - 1];
 
@@ -395,8 +395,8 @@ const PASSIVES = [
   },
   {
     id: 'hormone', name: 'Growth Hormone', color: '#ffb13d', max: 5,
-    buff: '+20% Area', side: 'Contagious: enemies +8% HP',
-    apply(s, L, k = 1) { s.area += 0.20 * L; s.enemyHp += 0.08 * L * k; }
+    buff: '+15% Area', side: 'Contagious: enemies +8% HP',
+    apply(s, L, k = 1) { s.area += 0.15 * L; s.enemyHp += 0.08 * L * k; }
   },
   {
     id: 'cloning', name: 'Cloning Serum', color: '#b45cff', max: 3,
@@ -507,6 +507,11 @@ const WITHDRAWAL = {
 };
 
 // --------------------------------------------------------------- Enemies --
+// Global toughness on top of the table below. Raised after the weapon damage
+// buffs: a Germ (14 HP) dies to one Pill Popper shot only at the very start
+// of the General Ward, and needs two from the Research Lab on.
+const ENEMY_HP_MULT = 1.4;
+const BOSS_HP_MULT = 1.2;
 const ENEMIES = {
   germ:        { name: 'Germ',        r: 12, speed: 1.25, hp: 10,   dmg: 6,  xp: 1,  color: '#ff3b5c', shape: 'blob' },
   bacillus:    { name: 'Bacillus',    r: 9,  speed: 2.1,  hp: 6,    dmg: 5,  xp: 1,  color: '#ff5cf0', shape: 'capsule' },
