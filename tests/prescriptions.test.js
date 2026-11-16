@@ -170,5 +170,22 @@ module.exports = [
       for (const id of ['melatonin', 'betablockers', 'bloodthinner', 'booster']) t.ok(r.offered.includes(id), `${id} offered`);
       for (const id of ['shrink', 'ghost', 'lodestone']) t.ok(r.dropped.includes(id), `${id} can drop`);
     }
+  },
+  {
+    name: 'level-up card strikes through a side effect cured by an Antidote',
+    fn(t) {
+      const g = t.game();
+      const r = g.run(() => {
+        startRun('nurse');
+        const def = PASSIVE_BY_ID.bloodthinner;
+        player.passives.bloodthinner = 1; player.passiveOrder.push('bloodthinner');
+        const before = UI.cardHtml({ kind: 'passive', def, level: 2 }, 0);
+        applyChoice({ kind: 'antidote', def });
+        const after = UI.cardHtml({ kind: 'passive', def, level: 2 }, 0);
+        return { before: before.includes('side cured'), after: after.includes('side cured') };
+      });
+      t.ok(!r.before, 'side effect shown normally before the cure');
+      t.ok(r.after, 'side effect struck through after the cure');
+    }
   }
 ];
