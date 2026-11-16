@@ -641,10 +641,12 @@ const UI = {
     if (isWeapon) {
       const desc = def.levelText[c.level - 1];
       const prev = c.level > 1 ? { def, level: c.level - 1 } : null;
-      body = this.weaponTagsHtml(def) + `<div class="card-desc">${desc}</div>` + this.weaponStatsHtml(def, c.level, prev);
+      body = this.weaponTagsHtml(def) + `<div class="card-desc">${desc}</div>` + this.weaponStatsHtml(def, c.level, prev) +
+        this.weaponEvoHint(def);
     } else {
       const cured = player.cured.includes(def.id);
       body =
+        (c.level === 1 ? this.passiveEvoHint(def) : '') +
         `<div class="buff">▲ ${def.buff}</div>` +
         (cured
           ? `<div class="side cured">▼ ${def.side}</div><div class="stack">side effect cured by Antidote</div>`
@@ -655,6 +657,27 @@ const UI = {
       `<span class="card-name">${def.name}</span><span class="card-lv">${lvLabel}</span></div>` +
       `<div class="card-kind">${isWeapon ? 'WEAPON' : 'PRESCRIPTION'}</div>` +
       body + `<div class="key">[${i + 1}]</div>`;
+  },
+
+  // ------------------------------------------------ Evolution hints --
+  // Prescription card: which of the player's current weapons it would evolve.
+  passiveEvoHint(def) {
+    return EVOLUTIONS
+      .filter((ev) => ev.requires === def.id && player.weapons.some((w) => w.def.id === ev.from))
+      .map((ev) => `<div class="evo-hint">&#9879; Evolves <b>${WEAPON_BY_ID[ev.from].name}</b> into <b style="color:${ev.color}">${ev.name}</b></div>`)
+      .join('');
+  },
+
+  // Weapon card: which prescription it evolves with, and whether the player has it.
+  weaponEvoHint(def) {
+    return EVOLUTIONS
+      .filter((ev) => ev.from === def.id)
+      .map((ev) => {
+        const has = (player.passives[ev.requires] || 0) > 0;
+        return `<div class="evo-hint${has ? '' : ' dim'}">&#9879; Evolves with <b>${PASSIVE_BY_ID[ev.requires].name}</b>` +
+          (has ? ' &#10003;' : '') + '</div>';
+      })
+      .join('');
   },
 
   // ------------------------------------------------ Weapon details --

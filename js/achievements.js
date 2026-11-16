@@ -27,9 +27,10 @@ const ACHIEVEMENTS = [
     check: (c) => c.event === 'victory'
   },
   {
-    id: 'polypharmacy', name: 'Polypharmacy', desc: 'Hold 6 different prescriptions at once.',
+    id: 'polypharmacy', name: 'Polypharmacy', desc: `Fill all ${MAX_PASSIVE_SLOTS} prescription slots, each at level 3 or higher.`,
     reward: { char: 'hypochondriac' },
-    check: (c) => c.inRun && c.player.passiveOrder.length >= 6
+    check: (c) => c.inRun && c.player.passiveOrder.length >= MAX_PASSIVE_SLOTS &&
+      c.player.passiveOrder.every((id) => c.player.passives[id] >= 3)
   },
   {
     id: 'frequent', name: 'Frequent Flyer', desc: 'Swallow 25 pills in total.',

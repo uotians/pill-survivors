@@ -187,5 +187,33 @@ module.exports = [
       t.ok(!r.before, 'side effect shown normally before the cure');
       t.ok(r.after, 'side effect struck through after the cure');
     }
+  },
+  {
+    name: 'cards hint at evolutions: prescription names your weapon, weapon names its prescription',
+    fn(t) {
+      const g = t.game();
+      const r = g.run(() => {
+        startRun('nurse');
+        player.weapons = []; player.passives = {}; player.passiveOrder = [];
+        const hormone = PASSIVE_BY_ID.hormone;
+        const card = (c) => UI.cardHtml(c, 0);
+        const out = {};
+        out.noWeapon = card({ kind: 'passive', def: hormone, level: 1 }).includes('evo-hint');
+        addWeapon('aura');
+        const withWeapon = card({ kind: 'passive', def: hormone, level: 1 });
+        out.hint = withWeapon.includes('evo-hint') && withWeapon.includes('Hyperthermia');
+        out.otherPassive = card({ kind: 'passive', def: PASSIVE_BY_ID.bloodthinner, level: 1 }).includes('evo-hint');
+        const wcard = card({ kind: 'weapon', def: WEAPON_BY_ID.aura, level: 2 });
+        out.weaponHint = wcard.includes('Evolves with') && wcard.includes('Growth Hormone') && wcard.includes('dim');
+        applyChoice({ kind: 'passive', def: hormone, level: 1 });
+        out.weaponHas = !card({ kind: 'weapon', def: WEAPON_BY_ID.aura, level: 2 }).includes('dim');
+        return out;
+      });
+      t.ok(!r.noWeapon, 'no hint without the matching weapon');
+      t.ok(r.hint, 'Growth Hormone card names Fever Field -> Hyperthermia');
+      t.ok(!r.otherPassive, 'unrelated prescription has no hint');
+      t.ok(r.weaponHint, 'Fever Field card names Growth Hormone');
+      t.ok(r.weaponHas, 'weapon hint lights up once the prescription is held');
+    }
   }
 ];

@@ -129,7 +129,7 @@ module.exports = [
     }
   },
   {
-    name: 'Hypochondriac: 3 starting prescriptions, doubled side effects',
+    name: 'Hypochondriac: 2 starting prescriptions, doubled side effects',
     fn(t) {
       const g = t.game();
       const r = g.run(() => {
@@ -143,7 +143,7 @@ module.exports = [
         const start = player.passiveOrder.length;
         return { start, nurse: measure('nurse'), hypo: measure('hypochondriac') };
       });
-      t.eq(r.start, 3, 'starts with 3 prescriptions');
+      t.eq(r.start, 2, 'starts with 2 prescriptions');
       t.between(r.nurse.size, 1.119, 1.121, 'nurse size with Steroids 2');
       t.between(r.hypo.size, 1.239, 1.241, 'hypochondriac size doubled side effect');
       t.eq(r.hypo.might, r.nurse.might, 'buff is not doubled');

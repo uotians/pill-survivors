@@ -6,13 +6,13 @@
    ========================================================================= */
 
 // Shown on the main menu. Bump on every release.
-const GAME_VERSION = '0.6.0'; // keep in sync with index.html (meta + ?v= on every file)
+const GAME_VERSION = '0.7.0'; // keep in sync with index.html (meta + ?v= on every file)
 
 const lv = (arr, L) => arr[clamp(L, 1, arr.length) - 1];
 
 const BASE_RADIUS = 15;
-const MAX_WEAPON_SLOTS = 6;
-const MAX_PASSIVE_SLOTS = 6;
+const MAX_WEAPON_SLOTS = 4;
+const MAX_PASSIVE_SLOTS = 4;
 const RUN_SECONDS = 600; // final boss arrives at 10:00
 
 // Every frame the player's stats are rebuilt from scratch in this order:
@@ -104,10 +104,10 @@ const CHARACTERS = [
     color: '#ff9ad5',
     weapon: 'aura',
     desc: 'Has read every pill leaflet. Twice.',
-    bonus: 'Starts with 3 random prescriptions. ALL side effects ×2',
+    bonus: 'Starts with 2 random prescriptions. ALL side effects ×2',
     cost: 0,
     achievement: 'polypharmacy',
-    startPassives: 3,
+    startPassives: 2,
     apply(s) { s.sideMult = 2; }
   },
   {
