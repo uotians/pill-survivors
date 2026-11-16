@@ -643,10 +643,13 @@ const UI = {
       const prev = c.level > 1 ? { def, level: c.level - 1 } : null;
       body = this.weaponTagsHtml(def) + `<div class="card-desc">${desc}</div>` + this.weaponStatsHtml(def, c.level, prev);
     } else {
+      const cured = player.cured.includes(def.id);
       body =
         `<div class="buff">▲ ${def.buff}</div>` +
-        `<div class="side">▼ ${def.side}${stats.sideMult > 1 ? ` <b class="mult">×${stats.sideMult}</b>` : ''}</div>` +
-        (c.level > 1 ? `<div class="stack">side effect stacks ×${c.level}</div>` : '');
+        (cured
+          ? `<div class="side cured">▼ ${def.side}</div><div class="stack">side effect cured by Antidote</div>`
+          : `<div class="side">▼ ${def.side}${stats.sideMult > 1 ? ` <b class="mult">×${stats.sideMult}</b>` : ''}</div>` +
+            (c.level > 1 ? `<div class="stack">side effect stacks ×${c.level}</div>` : ''));
     }
     return `<div class="card-top" style="--c:${def.color};--a:${accent}"><span class="pill-icon"></span>` +
       `<span class="card-name">${def.name}</span><span class="card-lv">${lvLabel}</span></div>` +

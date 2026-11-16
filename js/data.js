@@ -179,11 +179,11 @@ const WEAPONS = [
       '+2 damage',
       '+25% radius',
       '+2 damage',
-      '+2 damage, +25% radius'
+      '+2 damage, +28% radius'
     ],
     base: (L) => ({
       dmg: lv([4, 6, 6, 8, 10], L),
-      radius: lv([60, 60, 75, 75, 92], L),
+      radius: lv([70, 70, 90, 90, 115], L),
       tick: 22,
       knock: lv([1, 1, 1.5, 1.5, 2], L)
     })
@@ -197,14 +197,15 @@ const WEAPONS = [
     levelText: [
       'Giant pills orbit you, smashing enemies.',
       '+1 pill',
-      '+4 damage, wider orbit',
+      '+4 damage, wider orbit, bigger pills',
       '+1 pill',
-      '+1 pill, lasts longer, spins faster'
+      '+1 pill, bigger pills, lasts longer, spins faster'
     ],
     base: (L) => ({
       dmg: lv([16, 16, 20, 20, 24], L),
       amount: lv([3, 4, 4, 5, 6], L),
-      radius: lv([80, 80, 95, 95, 105], L),
+      radius: lv([80, 80, 100, 100, 115], L),
+      size: lv([1, 1, 1.2, 1.2, 1.4], L),
       rot: lv([0.07, 0.07, 0.075, 0.075, 0.085], L),
       dur: lv([220, 220, 240, 240, 300], L),
       cd: lv([120, 120, 110, 110, 100], L)
@@ -394,8 +395,8 @@ const PASSIVES = [
   },
   {
     id: 'hormone', name: 'Growth Hormone', color: '#ffb13d', max: 5,
-    buff: '+12% Area', side: 'Contagious: enemies +8% HP',
-    apply(s, L, k = 1) { s.area += 0.12 * L; s.enemyHp += 0.08 * L * k; }
+    buff: '+20% Area', side: 'Contagious: enemies +8% HP',
+    apply(s, L, k = 1) { s.area += 0.20 * L; s.enemyHp += 0.08 * L * k; }
   },
   {
     id: 'cloning', name: 'Cloning Serum', color: '#b45cff', max: 3,
@@ -675,7 +676,7 @@ const EVOLUTIONS = [
     desc: 'A raging fever field that melts the whole crowd.',
     side: 'Burns you for 1 HP/s (never lethal).',
     applySide(s, k) { s.selfBurn += 1 * k; },
-    base: () => ({ dmg: 16, radius: 150, tick: 18, knock: 2.5 })
+    base: () => ({ dmg: 16, radius: 175, tick: 18, knock: 2.5 })
   },
   {
     id: 'planetary', name: 'Planetary Dose', from: 'orbit', requires: 'painkillers', family: 'orbit',
@@ -683,7 +684,7 @@ const EVOLUTIONS = [
     desc: 'Six giant pills orbit you permanently.',
     side: 'Gravity well: pulls nearby enemies toward you.',
     applySide(s, k) { s.gravity += 0.5 * k; },
-    base: () => ({ dmg: 24, amount: 6, radius: 115, rot: 0.07, dur: 1e9, cd: 1 })
+    base: () => ({ dmg: 24, amount: 6, radius: 125, size: 1.5, rot: 0.07, dur: 1e9, cd: 1 })
   },
   {
     id: 'tesla', name: 'Tesla Heart', from: 'zap', requires: 'iron', family: 'zap',

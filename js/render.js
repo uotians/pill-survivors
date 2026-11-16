@@ -853,7 +853,7 @@ function drawLobs() {
 function drawOrbits() {
   const w = weaponByFamily('orbit');
   if (!w) return;
-  const scale = 1.1 * Math.sqrt(stats.area);
+  const scale = 1.3 * (w.size || 1) * Math.sqrt(stats.area);
   for (const p of w.points) {
     drawGlow(p.x, p.y, 20 * scale, w.def.color, 0.3);
     drawCapsule(p.x, p.y, p.a + Math.PI / 2, w.def.color, w.def.accent, scale);

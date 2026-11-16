@@ -213,5 +213,41 @@ module.exports = [
       t.log(`kills ${r.kills}, codex: ${r.types}`);
       t.ok(r.kills > 20, 'combat works');
     }
+  },
+  {
+    name: 'player bullets and orbit pills shoot down enemy shots, but not boss shots',
+    fn(t) {
+      const g = t.game({ seed: 5 });
+      g.run(new Function(SETUP));
+      const r = g.run(() => {
+        const out = {};
+        startRun('nurse');
+        player.weapons = []; enemies = []; projectiles = [];
+        const spitter = __near('spitter', 300);
+        const boss = __near('superbug', -300);
+        const shot = (src) => { shootGlob(src, 0, 0, 5); const s = enemyShots[enemyShots.length - 1]; s.x = player.x + 120; s.y = player.y; return s; };
+        const bullet = () => projectiles.push({ x: player.x + 120, y: player.y, vx: 0, vy: 0, r: 6, life: 99, pierce: 1, hit: new Set(), dmg: 0 });
+        const s1 = shot(spitter); bullet(); updateEnemyShots(); out.normal = !!s1.dead;
+        projectiles = []; enemyShots = [];
+        const s2 = shot(boss); bullet(); updateEnemyShots(); out.boss = !!s2.dead;
+        projectiles = []; enemyShots = [];
+        const s3 = shot(spitter); updateEnemyShots(); out.alone = !!s3.dead;
+        enemyShots = [];
+        addWeapon('orbit'); const w = weaponByFamily('orbit');
+        w.points = [{ x: player.x + 120, y: player.y, a: 0 }];
+        const s4 = shot(spitter); updateEnemyShots(); out.orbit = !!s4.dead;
+        enemyShots = []; w.points = [];
+        addWeapon('aura');
+        const s5 = shot(spitter); s5.x = player.x + 40; s5.vx = 0; s5.vy = 0;
+        player.weapons = player.weapons.filter((x) => x.def.family === 'aura');
+        updateEnemyShots(); out.aura = !!s5.dead;
+        return out;
+      });
+      t.ok(r.normal, 'a bullet destroys a regular enemy shot');
+      t.ok(!r.boss, 'boss shots cannot be shot down');
+      t.ok(!r.alone, 'shots without a bullet nearby survive');
+      t.ok(r.orbit, 'orbit pills block enemy shots');
+      t.ok(!r.aura, 'Fever Field does not block enemy shots');
+    }
   }
 ];

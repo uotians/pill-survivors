@@ -666,6 +666,8 @@ function updateDying() {
 }
 
 // -------------------------------------------------------------- Weapons --
+const orbitPillRadius = (w) => 13 * (w.size || 1) * Math.sqrt(stats.area);
+
 function weaponStats(w) {
   const b = w.def.base(w.level);
   return Object.assign({}, b, {
@@ -899,12 +901,13 @@ const WEAPON_LOGIC = {
   },
 
   orbit(w, ws) {
+    w.size = ws.size || 1;
     if (w.active > 0) {
       w.active--;
       w.angle += ws.rot;
       const n = ws.amount;
       w.points.length = 0;
-      const hitR = 11 * Math.sqrt(stats.area);
+      const hitR = orbitPillRadius(w);
       for (let i = 0; i < n; i++) {
         const a = w.angle + (i / n) * TAU;
         const px = player.x + Math.cos(a) * ws.radius;
@@ -1561,8 +1564,24 @@ function shootGlob(e, angle, speed, dmg) {
     r: 6,
     dmg,
     life: 300,
-    color: e.def.color
+    color: e.def.color,
+    boss: !!e.boss // boss shots cannot be shot down
   });
+}
+
+// Player bullets and orbiting pills shoot down regular enemy shots (not boss
+// shots). Area weapons like Fever Field deliberately do not.
+function shotBlocked(s) {
+  for (const p of projectiles) {
+    if (p.dead || p.placebo) continue;
+    if (dist2(s.x, s.y, p.x, p.y) < (s.r + p.r) ** 2) return true;
+  }
+  const w = weaponByFamily('orbit');
+  if (w && w.points.length) {
+    const hitR = orbitPillRadius(w);
+    for (const pt of w.points) if (dist2(s.x, s.y, pt.x, pt.y) < (s.r + hitR) ** 2) return true;
+  }
+  return false;
 }
 
 function updateEnemyShots() {
@@ -1572,6 +1591,11 @@ function updateEnemyShots() {
     s.y += s.vy * ts;
     s.life -= ts;
     if (s.life <= 0) { s.dead = true; continue; }
+    if (!s.boss && shotBlocked(s)) {
+      s.dead = true;
+      spawnParticles(s.x, s.y, 5, s.color, 2, 14, 2);
+      continue;
+    }
     if (dist2(s.x, s.y, player.x, player.y) < (s.r + player.radius) ** 2) {
       hurtPlayer(s.dmg, s.x, s.y);
       s.dead = true;
