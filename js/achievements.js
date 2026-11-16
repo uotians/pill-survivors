@@ -13,17 +13,17 @@ const liveKills = (c) => c.save.stats.kills + (c.inRun ? c.game.kills : 0);
 const ACHIEVEMENTS = [
   {
     id: 'firstDose', name: 'First Dose', desc: 'Finish your first run.',
-    reward: { gold: 50 },
+    reward: { gold: 20 },
     check: (c) => c.event === 'runEnd'
   },
   {
     id: 'outpatient', name: 'Outpatient', desc: 'Survive for 5:00.',
-    reward: { gold: 100 },
+    reward: { gold: 20 },
     check: (c) => c.inRun && c.game.time >= 300 * 60
   },
   {
     id: 'cured', name: 'Cured', desc: 'Defeat Patient Zero.',
-    reward: { gold: 300 },
+    reward: { gold: 100 },
     check: (c) => c.event === 'victory'
   },
   {
@@ -45,63 +45,63 @@ const ACHIEVEMENTS = [
   },
   {
     id: 'synthesis', name: 'Synthesis', desc: 'Evolve a weapon.',
-    reward: { gold: 150 },
+    reward: { gold: 30 },
     check: (c) => c.inRun && c.game.evolutions >= 1
   },
   {
     id: 'madScientist', name: 'Mad Scientist', desc: 'Evolve 3 weapons in a single run.',
-    reward: { gold: 400 },
+    reward: { gold: 150 },
     check: (c) => c.inRun && c.game.evolutions >= 3
   },
   {
     id: 'squasher', name: 'Superbug Squasher', desc: 'Defeat a Superbug.',
-    reward: { gold: 100 },
+    reward: { gold: 30 },
     check: (c) => c.event === 'bossKill'
   },
   {
     id: 'exterminator', name: 'Exterminator', desc: 'Kill 1,000 enemies in a single run.',
-    reward: { gold: 150 },
+    reward: { gold: 40 },
     check: (c) => c.inRun && c.game.kills >= 1000
   },
   {
     id: 'pandemic', name: 'Pandemic Control', desc: 'Kill 25,000 enemies in total.',
-    reward: { gold: 300 },
+    reward: { gold: 150 },
     progress: (c) => [liveKills(c), 25000],
     check: (c) => liveKills(c) >= 25000
   },
   {
     id: 'cleanLiving', name: 'Clean Living', desc: 'Survive 4:00 without taking any prescription.',
-    reward: { gold: 200 },
+    reward: { gold: 75 },
     check: (c) => c.inRun && c.game.time >= 240 * 60 && c.player.passiveOrder.length === 0
   },
   {
     id: 'cocktail', name: 'Cocktail', desc: 'Have 4 different pills active at the same time.',
-    reward: { gold: 150 },
+    reward: { gold: 20 },
     check: (c) => c.inRun && c.player.tempEffects.filter((e) => !e.def.hidden).length >= 4
   },
   {
     id: 'untouchable', name: 'Untouchable', desc: 'Survive the first 3:00 without taking damage.',
-    reward: { gold: 200 },
+    reward: { gold: 75 },
     check: (c) => c.inRun && c.game.time >= 180 * 60 && c.game.damageTaken === 0
   },
   {
     id: 'fullyMedicated', name: 'Fully Medicated', desc: 'Reach level 30 in a run.',
-    reward: { gold: 150 },
+    reward: { gold: 30 },
     check: (c) => c.inRun && c.game.level >= 30
   },
   {
     id: 'labRat', name: 'Lab Rat', desc: 'Clear the Research Lab.',
-    reward: { gold: 400 },
+    reward: { gold: 150 },
     check: (c) => c.event === 'victory' && c.game.stage.id === 'lab'
   },
   {
     id: 'graveShift', name: 'Grave Shift', desc: 'Clear the Morgue.',
-    reward: { gold: 600 },
+    reward: { gold: 250 },
     check: (c) => c.event === 'victory' && c.game.stage.id === 'morgue'
   },
   {
     id: 'patientZeroZero', name: 'Herd Immunity', desc: 'Clear the Quarantine Zone.',
-    reward: { gold: 1000 },
+    reward: { gold: 400 },
     check: (c) => c.event === 'victory' && c.game.stage.id === 'quarantine'
   }
 ];

@@ -101,7 +101,7 @@ module.exports = [
         return out;
       });
       t.ok(r.firstDose, 'First Dose after first run');
-      t.ok(r.goldAfterFirst >= 50, 'gold reward paid');
+      t.ok(r.goldAfterFirst >= 20, 'gold reward paid');
       t.ok(r.revive, '5 deaths unlock revive in the pharmacy');
       t.ok(r.hypo, 'Polypharmacy unlocks the Hypochondriac');
       t.ok(r.addict, '25 pills unlock the Addict');
